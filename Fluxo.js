@@ -20,7 +20,7 @@ const BL=['#E6F1FB','#185FA5','#0C447C'], AM=['#FAEEDA','#BA7517','#633806'], GR
 
 const URL_SP='https://nfe.prefeitura.sp.gov.br';
 const URL_ARQ='https://app.arquivei.com.br';
-const URL_RIO='https://notacarioca.rio.gov.br';
+const URL_NAC='https://www.nfse.gov.br/consultapublica';
 const URL_JIRA='https://preventsenior.atlassian.net/servicedesk/customer/portal/27/group/160/create/1237';
 
 
@@ -328,9 +328,9 @@ const FLOW_RECEB=
   '<line x1="20" y1="374" x2="660" y2="374" stroke="#E7E5DE" stroke-width="1"/>'+
   '<text class="zlabel" x="20" y="396">PORTAIS PARA LOCALIZAR — CLIQUE PARA ABRIR</text>'+
   pbox(20,410,155,52,GR,'Nota do Milhão','São Paulo',URL_SP)+
-  pbox(185,410,155,52,GR,'Nota Carioca','Rio de Janeiro',URL_RIO)+
+  pbox(185,410,155,52,GR,'Portal Nacional','2ª via / consulta',URL_NAC)+
   pbox(350,410,155,52,GR,'Arquivei (QUIVE)','',URL_ARQ)+
-  pbox(515,410,145,52,GY,'E-mail Fiscal','')+
+  pbox(515,410,145,52,GR,'E-mail do Fiscal','recebimento de NF','mailto:fiscal.preventsenior@preventsenior.com.br')+
   '</svg>';
 
 /* ---- FLUXO: Classificação da nota ---- */
@@ -474,8 +474,8 @@ var PROC={
     lead:"O primeiro passo do fluxo: por onde a nota chega e onde localizá-la antes de começar a análise.",
     steps:[
       {t:"Nota recebida",d:"As notas e faturas entram a partir de serviços realizados nos centros de custo da Prevent Senior (hospitais, núcleos e diagnósticos)."},
-      {t:"E-mail de fornecedores",d:"Notas e faturas enviadas diretamente pelos fornecedores por e-mail."},
-      {t:"Portais e prefeituras",d:"Busca ativa das notas nos portais das prefeituras e sistemas fiscais.",link:{u:URL_SP,label:"Abrir Nota do Milhão (SP)"}},
+      {t:"E-mail de fornecedores e do Fiscal",d:"Notas e faturas enviadas pelos fornecedores e recebidas no e-mail do Fiscal (fiscal.preventsenior@preventsenior.com.br) — principal canal de recebimento das notas.",link:{u:"mailto:fiscal.preventsenior@preventsenior.com.br",label:"Escrever para o Fiscal"}},
+      {t:"Portais e prefeituras",d:"Busca ativa das notas nos portais das prefeituras e sistemas fiscais — Nota do Milhão (SP) e Portal Nacional de NFS-e (2ª via/consulta). Os links ficam no fluxograma (botão Apresentar).",link:{u:URL_SP,label:"Abrir Nota do Milhão (SP)"}},
       {t:"Chamado no JIRA",d:"Notas encaminhadas via chamado no projeto RDNF (Recebimento de Notas Fiscais)."},
       {t:"Nota localizada",d:"Com a nota em mãos por qualquer um dos canais, segue para a etapa de Análise de nota fiscal."}
     ], flow:FLOW_RECEB },
