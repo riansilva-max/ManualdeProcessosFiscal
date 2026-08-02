@@ -1,7 +1,7 @@
 /* ===== MOTOR / APP ===== */
 var P=Object.assign({}, PROC, FAQ, {calendario:CAL_ITEM});
 var STAT={pronto:["var(--ok)","pronto"],rascunho:["var(--draft)","rascunho"],vazio:["var(--empty)","a preencher"]};
-var cur="geral", view="hub", filter="", stepIdx=-1, catOpen={}, selCal=null, nearOpen=false, calMonthOpen=null, calYear=null, tab="fluxo";
+var cur="geral", view="hub", filter="", stepIdx=-1, catOpen={}, selCal=null, nearOpen=false, calMonthOpen=null, calYear=null, calCollapsed=false, calView="mes", tab="fluxo";
 var root=document.getElementById("root");
 
 function wrap(d){
@@ -71,45 +71,56 @@ function calBR(iso){var p=iso.split("-");return p[2]+"/"+p[1];}
 function monthGrid(base,todayIso){
   var y=base.getFullYear(),m=base.getMonth();
   var first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
-  var wd=["D","S","T","Q","Q","S","S"];
-  var h='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;">';
-  wd.forEach(function(w){h+='<div style="text-align:center;font-size:11px;color:var(--faint);padding:2px;">'+w+'</div>';});
-  for(var i=0;i<first;i++)h+='<div></div>';
+  var wd=["dom","seg","ter","qua","qui","sex","sáb"];
+  var h='<div class="calgrid">';
+  wd.forEach(function(w){h+='<div class="wd">'+w+'</div>';});
+  for(var i=0;i<first;i++)h+='<div class="calcell empty"></div>';
   for(var dn=1;dn<=days;dn++){
     var iso=calIso(y,m,dn), isSel=(iso===selCal), isToday=(iso===todayIso);
-    var bg=isSel?"var(--accent-soft)":"transparent";
-    var bd=isSel?"2px solid var(--accent)":(isToday?"1px solid var(--border-strong)":"1px solid var(--border)");
-    h+='<div data-cal="'+iso+'" style="cursor:pointer;text-align:center;padding:6px 2px;border:'+bd+';border-radius:7px;background:'+bg+';font-size:12.5px;min-height:30px;">'+dn+'</div>';
+    var ev=(typeof EVENTOS!=="undefined"&&EVENTOS[iso])?EVENTOS[iso]:[];
+    var list=VENC[iso]||[];
+    var chips='';
+    ev.forEach(function(e){chips+='<span class="calchip evt" title="'+calEsc(e)+'">'+calEsc(e)+'</span>';});
+    if(list.length)chips+='<span class="calchip venc">'+list.length+(list.length===1?' vencimento':' vencimentos')+'</span>';
+    if(iso===COMPET_FECHA)chips+='<span class="calchip comp">Fecha competência</span>';
+    h+='<div class="calcell'+(isToday?" today":"")+(isSel?" sel":"")+'" data-cal="'+iso+'"><div class="calnum">'+dn+'</div>'+chips+'</div>';
   }
+  var rem=(7-((first+days)%7))%7;
+  for(var t=0;t<rem;t++)h+='<div class="calcell empty"></div>';
   return h+'</div>';
 }
-function taskGet(d){try{return JSON.parse(localStorage.getItem("manualfiscal:tasks:"+d)||"[]");}catch(e){return [];}}
-function taskSet(d,x){try{localStorage.setItem("manualfiscal:tasks:"+d,JSON.stringify(x));}catch(e){}}
+
+
 function renderCalDay(){
   var el=document.getElementById("calday"); if(!el)return;
-  if(!selCal){el.innerHTML='<div style="font-size:13px;color:var(--faint);margin-top:12px;">Clique em um dia para ver os avisos e as tarefas.</div>';return;}
+  if(!selCal){el.innerHTML='<div style="font-size:13px;color:var(--faint);margin-top:14px;text-align:center;">Clique em um dia para ver os avisos e vencimentos.</div>';return;}
   var ev=(typeof EVENTOS!=="undefined"&&EVENTOS[selCal])?EVENTOS[selCal]:[];
   var list=VENC[selCal]||[];
   var comp=(selCal===COMPET_FECHA)?'<div style="margin-bottom:8px;color:var(--danger-ink);font-weight:500;">Fechamento da competência.</div>':'';
-  var det='<div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;background:var(--surface-2);margin-top:14px;">';
+  var det='<div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;background:var(--surface);margin-top:14px;">';
   det+='<div style="font-weight:600;margin-bottom:10px;">'+calBR(selCal)+'</div>'+comp;
   if(ev.length) det+='<div style="font-size:12px;font-weight:600;color:var(--accent-ink);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Avisos e eventos</div><div style="font-size:14px;line-height:1.85;margin-bottom:'+(list.length?"12px":"0")+';">'+ev.map(function(f){return "• "+calEsc(f);}).join("<br>")+'</div>';
   if(list.length) det+='<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;">Vencimentos ('+list.length+')</div><div style="font-size:14px;line-height:1.85;">'+list.map(function(f){return "• "+calEsc(f);}).join("<br>")+'</div>';
   if(!ev.length && !list.length && !comp) det+='<div style="font-size:13px;color:var(--muted);">Sem avisos ou vencimentos neste dia.</div>';
   det+='</div>';
-  var tk=taskGet(selCal);
-  var t='<div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;background:var(--surface-2);margin-top:12px;">';
-  t+='<div style="font-weight:600;margin-bottom:4px;">Minhas tarefas — '+calBR(selCal)+'</div>';
-  t+='<div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Anote o que fazer neste dia. Salvo só neste navegador, para você — volte quando quiser para consultar.</div>';
-  t+='<div style="display:flex;gap:8px;margin-bottom:'+(tk.length?"12px":"0")+';"><input id="taskinput" class="search" style="flex:1;margin:0;" placeholder="Nova tarefa…"><button class="cta" id="taskadd" style="width:auto;">Adicionar</button></div>';
-  if(tk.length) t+='<div>'+tk.map(function(it,i){return '<label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;margin-bottom:7px;background:'+(it.done?"var(--accent-soft)":"var(--surface)")+';"><input type="checkbox" data-tk="'+i+'" '+(it.done?"checked":"")+' style="width:17px;height:17px;accent-color:var(--accent);cursor:pointer;"><span style="flex:1;font-size:14px;'+(it.done?"color:var(--muted);text-decoration:line-through;":"color:var(--ink);")+'">'+calEsc(it.text)+'</span><button data-del="'+i+'" title="remover" style="background:none;border:none;color:var(--faint);cursor:pointer;font-size:18px;line-height:1;">×</button></label>';}).join('')+'</div>';
-  t+='</div>';
-  el.innerHTML=det+t;
-  var inp=document.getElementById("taskinput"), add=document.getElementById("taskadd");
-  function addTask(){var v=inp.value.trim(); if(!v)return; var x=taskGet(selCal); x.push({text:v,done:false}); taskSet(selCal,x); renderCalDay(); var ni=document.getElementById("taskinput"); if(ni)ni.focus();}
-  if(add)add.onclick=addTask; if(inp)inp.onkeydown=function(e){if(e.key==="Enter")addTask();};
-  el.querySelectorAll("[data-tk]").forEach(function(cb){cb.onchange=function(){var x=taskGet(selCal);x[cb.getAttribute("data-tk")].done=cb.checked;taskSet(selCal,x);renderCalDay();};});
-  el.querySelectorAll("[data-del]").forEach(function(bt){bt.onclick=function(e){e.preventDefault();var x=taskGet(selCal);x.splice(bt.getAttribute("data-del"),1);taskSet(selCal,x);renderCalDay();};});
+  el.innerHTML=det;
+}
+function miniMonth(y,m,todayIso){
+  var mn=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  var first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+  var wd=["D","S","T","Q","Q","S","S"];
+  var h='<div class="ymonth"><div class="ymonth-title" data-gomon="'+m+'">'+mn[m]+'</div><div class="ygrid">';
+  wd.forEach(function(w){h+='<div class="ywd">'+w+'</div>';});
+  for(var i=0;i<first;i++)h+='<div class="ycell empty"></div>';
+  for(var dn=1;dn<=days;dn++){
+    var iso=calIso(y,m,dn);
+    var hasData=(!!VENC[iso])||(typeof EVENTOS!=="undefined"&&!!EVENTOS[iso])||(iso===COMPET_FECHA);
+    var cls='ycell';
+    if(iso===todayIso)cls+=' today'; else if(hasData)cls+=' data';
+    if(iso===selCal)cls+=' sel';
+    h+='<div class="'+cls+'" data-cal="'+iso+'">'+dn+'</div>';
+  }
+  return h+'</div></div>';
 }
 function renderCalendar(){
   var host=document.getElementById("calwrap"); if(!host)return;
@@ -118,22 +129,27 @@ function renderCalendar(){
   if(calYear===null) calYear=today.getFullYear();
   if(calMonthOpen===null) calMonthOpen=today.getMonth();
   var cf=new Date(COMPET_FECHA+"T00:00:00"); var dd=Math.round((cf-today)/86400000);
-  var compHtml=(dd>=0&&dd<=7)?'<div class="cal-alert danger" style="margin-top:16px;">'+(dd===0?"A competência fecha hoje":"Faltam "+dd+(dd===1?" dia":" dias")+" para o fechamento da competência")+' ('+calBR(COMPET_FECHA)+') — lançar todas as notas com impostos antes do fechamento.</div>':(dd<0?'':'<div style="font-size:13px;color:var(--muted);margin-top:16px;">Fechamento da competência em '+calBR(COMPET_FECHA)+'.</div>');
-  var ab=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-  var picker='<div class="calpicker"><div class="calpicker-head"><span>'+calYear+'</span><span class="yrnav"><button data-yr="-1">‹</button><button data-yr="1">›</button></span></div><div class="calmon-grid">';
-  for(var m=0;m<12;m++){
-    var pref=calYear+"-"+calPad(m+1);
-    var hasData=Object.keys(VENC).some(function(iso){return iso.indexOf(pref)===0;})||(COMPET_FECHA.indexOf(pref)===0)||(typeof EVENTOS!=="undefined"&&Object.keys(EVENTOS).some(function(iso){return iso.indexOf(pref)===0;}));
-    var sel=(m===calMonthOpen);
-    picker+='<div class="calmon'+(sel?' sel':'')+'" data-mon="'+m+'">'+ab[m]+(hasData?'<span style="position:absolute;top:6px;right:8px;width:6px;height:6px;border-radius:50%;background:'+(sel?"#fff":"var(--accent)")+';"></span>':'')+'</div>';
+  var banner=(dd>=0&&dd<=7)?'<div class="compbanner">'+(dd===0?"A competência fecha hoje":"Faltam "+dd+(dd===1?" dia":" dias")+" para o fechamento da competência")+' ('+calBR(COMPET_FECHA)+')<div style="font-weight:400;font-size:13px;margin-top:5px;">Lançar todas as notas com impostos antes do fechamento.</div></div>':'';
+  var mn=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  var toggle='<div class="calviewtoggle"><button data-view="mes" class="'+(calView==="mes"?"active":"")+'">Mês</button><button data-view="ano" class="'+(calView==="ano"?"active":"")+'">Ano</button></div>';
+  if(calView==="ano"){
+    var nav='<div class="calnav2"><button data-mn="-1" title="ano anterior">‹</button><button data-mn="1" title="próximo ano">›</button><span class="calnav-title">'+calYear+'</span>'+toggle+'</div>';
+    var yg='<div class="yeargrid">';
+    for(var mm=0;mm<12;mm++) yg+=miniMonth(calYear,mm,todayIso);
+    yg+='</div>';
+    host.innerHTML=banner+nav+yg;
+  } else {
+    var nav='<div class="calnav2"><button data-mn="-1" title="mês anterior">‹</button><button data-mn="1" title="próximo mês">›</button><span class="calnav-title">'+mn[calMonthOpen]+' de '+calYear+'</span>'+toggle+'<button class="calmin" title="'+(calCollapsed?"expandir":"recolher")+'">'+(calCollapsed?"▸":"▾")+'</button></div>';
+    var grid=calCollapsed?'':monthGrid(new Date(calYear,calMonthOpen,1),todayIso);
+    host.innerHTML=banner+nav+grid+(calCollapsed?'':'<div id="calday"></div>');
   }
-  picker+='</div></div>';
-  var grid='<div>'+monthGrid(new Date(calYear,calMonthOpen,1),todayIso)+'<div id="calday"></div></div>';
-  host.innerHTML=picker+grid+compHtml;
-  host.querySelectorAll("[data-yr]").forEach(function(el){el.onclick=function(){calYear+=parseInt(el.getAttribute("data-yr"));selCal=null;renderCalendar();};});
-  host.querySelectorAll("[data-mon]").forEach(function(el){el.onclick=function(){calMonthOpen=parseInt(el.getAttribute("data-mon"));selCal=null;renderCalendar();};});
-  host.querySelectorAll("[data-cal]").forEach(function(c){c.onclick=function(){selCal=c.getAttribute("data-cal");renderCalendar();};});
-  renderCalDay();
+  host.querySelectorAll("[data-view]").forEach(function(el){el.onclick=function(){calView=el.getAttribute("data-view");renderCalendar();};});
+  host.querySelectorAll("[data-mn]").forEach(function(el){el.onclick=function(){var d=parseInt(el.getAttribute("data-mn"));if(calView==="ano"){calYear+=d;}else{calMonthOpen+=d;if(calMonthOpen<0){calMonthOpen=11;calYear--;}if(calMonthOpen>11){calMonthOpen=0;calYear++;}}selCal=null;renderCalendar();};});
+  var mb=host.querySelector(".calmin"); if(mb)mb.onclick=function(){calCollapsed=!calCollapsed;renderCalendar();};
+  host.querySelectorAll(".calcell[data-cal]").forEach(function(c){c.onclick=function(){selCal=c.getAttribute("data-cal");renderCalendar();};});
+  host.querySelectorAll(".ymonth-title[data-gomon]").forEach(function(t){t.onclick=function(){calMonthOpen=parseInt(t.getAttribute("data-gomon"));calView="mes";selCal=null;renderCalendar();};});
+  host.querySelectorAll(".ycell[data-cal]").forEach(function(c){c.onclick=function(){var iso=c.getAttribute("data-cal");selCal=iso;calYear=parseInt(iso.split("-")[0]);calMonthOpen=parseInt(iso.split("-")[1])-1;calView="mes";renderCalendar();};});
+  if(calView!=="ano") renderCalDay();
 }
 
 
@@ -149,7 +165,7 @@ function switchTab(t){
   tab=t; view="hub"; stepIdx=-1; filter="";
   if(t==="fluxo")cur="geral";
   else if(t==="duvidas"){cur=ORDER_FAQ[0]; catOpen[P[ORDER_FAQ[0]].cat]=true;}
-  else { cur="calendario"; var _t=new Date(); calYear=_t.getFullYear(); calMonthOpen=_t.getMonth(); selCal=calIso(_t.getFullYear(),_t.getMonth(),_t.getDate()); }
+  else { cur="calendario"; var _t=new Date(); calYear=_t.getFullYear(); calMonthOpen=_t.getMonth(); selCal=calIso(_t.getFullYear(),_t.getMonth(),_t.getDate()); calCollapsed=false; }
   renderTabs(); render();
 }
 function wireHub(){
