@@ -482,29 +482,14 @@ var PROC={
   classificacao:{ sec:"Fiscal", name:"Classificação da nota", status:"pronto",
     lead:"Antes de aprovar e lançar, identifique o tipo da nota — é isso que define se precisa de aprovação e como o pedido de compra é montado.",
     steps:[
-      {t:"Qual o tipo da nota?",d:"O primeiro passo é identificar o tipo — isso define o caminho de aprovação e as retenções. Tipos principais: <b>contrato fixo</b>, <b>contrato variável</b> e <b>esporádica</b>. Notas de <b>locação</b> e de <b>telecomunicação</b> têm tratamento próprio (ver as seções específicas no menu)."},
+      {t:"Qual o tipo da nota?",d:"O primeiro passo é identificar o tipo — isso define o caminho de aprovação e as retenções. Tipos principais: <b>contrato fixo</b>, <b>contrato variável</b> e <b>esporádica</b>. Notas de <b>locação</b> e de <b>telecomunicação</b> estão detalhadas abaixo, nesta mesma seção."},
       {t:"Contrato fixo",d:"Contrato de <b>valor fixo</b>, negociado entre a área solicitante, o prestador e o Jurídico (valores mensais, semestrais ou anuais). O pedido de compra tem linhas por período, até o próximo reajuste.<div style='margin-top:10px;border:1px solid var(--danger);background:var(--danger-soft);color:var(--danger-ink);border-radius:8px;padding:11px 13px;'><b>&#9888; Regra crítica:</b> a única divergência aceitável é de <b>até R$ 0,99</b>. Qualquer diferença acima disso deve ser tratada como <b>divergência</b> — não lançar e abrir chamado para Contratos.</div>"},
       {t:"Contrato variável",d:"Contrato <b>variável</b>, negociado com valores unitários. Mesmo sendo variável, ele tem um <b>histórico</b> e uma <b>média de faturamento</b> — o analista deve verificar se o valor da nota está coerente com essa média. Precisa de aprovação do gerente administrativo do centro de custo.<div style='margin-top:10px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:11px 13px;'><b>Exemplo:</b> média mensal R$ 10.000; faturamento atual R$ 40.000 &rarr; desvio significativo do padrão. Nesse caso, investigar a divergência antes de seguir.</div>"},
       {t:"Esporádica",d:"Serviço pontual (ajuste ou reparo), fora de contrato. A unidade envia a nota esporádica ao Fiscal pelo JIRA, já autorizada — o Fiscal não abre chamado de aprovação. O orçamento é feito pelo setor de compras.<div style='margin-top:8px;font-size:12.5px;color:var(--muted);'><b>Em estruturação:</b> um fluxo específico para esporádicas será detalhado em breve.</div>"},
       {t:"NF de serviço",d:"Nota fiscal de serviço — <b>precisa de carimbo</b> (classificação dos impostos). Exemplo abaixo (NFS-e).",img:IMG_SERV},
-      {t:"Nota de locação",d:"Locação de bens ou imóveis. Diferença prática: a NF de serviço precisa de carimbo; a locação <b>NÃO</b>. Tem seção própria, com o embasamento legal — ver <b>Locação</b> no menu.",img:IMG_LOC}
+      {t:"Locação",d:"Locação de bens (equipamentos, máquinas) ou imóveis — costuma vir como fatura de locação, não como NF de serviço. Diferença prática: <b>não precisa de carimbo</b> e, em regra, <b>não tem retenção de impostos</b>.<div style='margin-top:10px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:11px 13px;'><b>Embasamento — Súmula Vinculante 31 (STF):</b> é inconstitucional a incidência do ISS sobre operações de locação de bens móveis. Sobre a locação de bens móveis não incide ISS, o que afasta a retenção desse imposto.</div>",img:IMG_LOC},
+      {t:"Telecomunicação",d:"Notas de <b>telefonia, internet e serviços de comunicação</b>. São tributadas por <b>ICMS</b> (estadual), e não por ISS (municipal) — por isso o tratamento de retenções é diferente das notas de serviço. Costumam vir como fatura/conta de comunicação (documento fiscal próprio).<div style='margin-top:8px;font-size:12.5px;color:var(--muted);'>Não se aplica retenção de ISS; retenções federais (PIS/COFINS/CSLL/IR) avaliar caso a caso. Detalhamento em breve.</div>"}
     ], flow:FLOW_CLASS },
-  locacao:{ sec:"Fiscal", name:"Locação",
-    lead:"Como tratar notas e faturas de locação de bens ou imóveis.",
-    steps:[
-      {t:"O que é",d:"Nota ou fatura referente à <b>locação de bens</b> (equipamentos, máquinas) ou imóveis. Costuma vir como fatura de locação, e não como NF de serviço."},
-      {t:"Sem retenção de impostos",d:"Em regra, a locação <b>não tem retenção de impostos</b>, porque a locação de bens não caracteriza prestação de serviço tributável em diversos casos.<div style='margin-top:10px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent-ink);border-radius:8px;padding:11px 13px;'><b>Embasamento — Súmula Vinculante 31 (STF):</b> é inconstitucional a incidência do ISS sobre operações de locação de bens móveis. Ou seja, sobre a locação de bens móveis não incide ISS — o que afasta a retenção desse imposto.</div>"},
-      {t:"Não precisa de carimbo",d:"Diferente da NF de serviço, a locação <b>não passa pelo carimbo</b> de classificação de impostos — segue no fluxo sem retenções."},
-      {t:"Atenção",d:"Confirmar caso a caso: se a operação misturar locação com prestação de serviço, a parte de serviço pode ter tratamento próprio.<div style='margin-top:8px;font-size:12.5px;color:var(--muted);'><b>Em estruturação:</b> exemplos e exceções serão detalhados em breve.</div>",img:IMG_LOC}
-    ] },
-  telecom:{ sec:"Fiscal", name:"Telecomunicação",
-    lead:"Notas de telefonia, internet, serviços de comunicação e telecomunicações.",
-    steps:[
-      {t:"O que abrange",d:"Documentos fiscais de <b>telefonia</b>, <b>internet</b>, links de dados e demais <b>serviços de comunicação e telecomunicações</b>."},
-      {t:"Tributação por ICMS, não ISS",d:"Serviços de comunicação são tributados por <b>ICMS</b> (competência estadual), e não por ISS (municipal). Por isso o tratamento de retenções é diferente das notas de serviço comuns.<div style='margin-top:10px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;padding:11px 13px;font-size:13px;color:var(--muted);'>Como não é serviço sujeito a ISS, não se aplica retenção de ISS. As retenções federais (PIS/COFINS/CSLL/IR) devem ser avaliadas conforme o caso — confirmar antes de lançar.</div>"},
-      {t:"Documento fiscal próprio",d:"Costuma vir como <b>fatura/conta de serviços de comunicação</b> (documento fiscal específico do setor), diferente da NFS-e de serviço."},
-      {t:"Atenção",d:"<div style='font-size:12.5px;color:var(--muted);'><b>Em estruturação:</b> particularidades de lançamento e retenções serão detalhadas em breve.</div>"}
-    ] },
   analise:{ sec:"Fiscal", name:"Análise de nota fiscal", status:"pronto",
     lead:"Como analisar a nota antes de lançar: o que conferir no prestador, no tomador e no serviço, e como saber o que é retido.",
     steps:[
@@ -565,4 +550,4 @@ var PROC={
       {t:"Responsáveis",d:"Cada fiscal inclui o número das notas que lança nas colunas dos meses. As alterações mais pesadas — incluir ou excluir linhas e atualizar os pedidos — são feitas somente por Tânia Gouveia, responsável pela planilha."}
     ], flow:FLOW_PLAN }
 };
-var ORDER_FLUXO=["geral", "recebimento", "classificacao", "locacao", "telecom", "analise", "carimbo", "lancamento", "jira", "armazenamento", "fechamento"];
+var ORDER_FLUXO=["geral", "recebimento", "classificacao", "analise", "carimbo", "lancamento", "jira", "armazenamento", "fechamento"];
