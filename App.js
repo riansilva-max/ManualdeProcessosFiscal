@@ -1,7 +1,15 @@
 /* ===== MOTOR / APP ===== */
 var P=Object.assign({}, PROC, FAQ, {calendario:CAL_ITEM});
+
+var PROCFISC={
+  classificacao:{name:"Classificação da nota", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}},
+  analise:{name:"Análise da nota", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}},
+  chamados:{name:"Abertura de chamados", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}}
+};
+var ORDER_PROCFISC=["classificacao","analise","chamados"];
+
 var STAT={pronto:["var(--ok)","pronto"],rascunho:["var(--draft)","rascunho"],vazio:["var(--empty)","a preencher"]};
-var cur="geral", view="hub", filter="", stepIdx=-1, catOpen={}, selCal=null, nearOpen=false, calMonthOpen=null, calYear=null, calCollapsed=false, calView="mes", tab="fluxo";
+var cur="geral", view="hub", filter="", stepIdx=-1, catOpen={}, selCal=null, nearOpen=false, calMonthOpen=null, calYear=null, calCollapsed=false, calView="mes", curPF=null, tab="fluxo";
 var root=document.getElementById("root");
 
 function wrap(d){
@@ -156,7 +164,7 @@ function renderCalendar(){
 
 
 
-var TABS=[["fluxo","Fluxo fiscal"],["duvidas","Dúvidas recorrentes"],["calendario","Calendário"]];
+var TABS=[["fluxo","Fluxo fiscal"],["processos","Processos Fiscais"],["duvidas","Dúvidas recorrentes"],["calendario","Calendário"],["controles","Controles"],["responsaveis","Responsáveis"]];
 function renderTabs(){
   document.getElementById("tabbar").innerHTML=TABS.map(function(t){return '<button class="tabbtn'+(tab===t[0]?" active":"")+'" data-tab="'+t[0]+'">'+t[1]+'</button>';}).join("");
   document.querySelectorAll(".tabbtn").forEach(function(b){b.onclick=function(){switchTab(b.getAttribute("data-tab"));};});
@@ -165,7 +173,8 @@ function switchTab(t){
   tab=t; view="hub"; stepIdx=-1; filter="";
   if(t==="fluxo")cur="geral";
   else if(t==="duvidas"){cur=ORDER_FAQ[0]; catOpen[P[ORDER_FAQ[0]].cat]=true;}
-  else { cur="calendario"; var _t=new Date(); calYear=_t.getFullYear(); calMonthOpen=_t.getMonth(); selCal=calIso(_t.getFullYear(),_t.getMonth(),_t.getDate()); calCollapsed=false; }
+  else if(t==="calendario"){ cur="calendario"; var _t=new Date(); calYear=_t.getFullYear(); calMonthOpen=_t.getMonth(); selCal=calIso(_t.getFullYear(),_t.getMonth(),_t.getDate()); calCollapsed=false; }
+  else if(t==="processos"){ curPF=ORDER_PROCFISC[0]; }
   renderTabs(); render();
 }
 function wireHub(){
@@ -185,8 +194,35 @@ function wirePresent(){
 }
 function render(){
   if(view==="present"){root.innerHTML=presentHtml();wirePresent();return;}
+  if(tab==="processos"){root.innerHTML=procfiscHtml();wireProcfisc();return;}
+  if(tab==="controles"){root.innerHTML=controlesHtml();return;}
+  if(tab==="responsaveis"){root.innerHTML=responsaveisHtml();return;}
   root.innerHTML=hubHtml();
   wireHub();
+}
+function procfiscHtml(){
+  if(!curPF)curPF=ORDER_PROCFISC[0];
+  var railh='<div class="sec-label">Processos</div>';
+  ORDER_PROCFISC.forEach(function(k){railh+='<div class="item'+(k===curPF?" active":"")+'" data-pf="'+k+'"><span class="name">'+PROCFISC[k].name+'</span></div>';});
+  var p=PROCFISC[curPF];
+  var campos=[["Objetivo","objetivo"],["Descrição","descricao"],["Responsáveis","responsaveis"],["Passo a passo","passos"],["Exceções","excecoes"],["Observações","observacoes"]];
+  var d='<div class="crumb">Processos Fiscais</div><div class="titlerow"><h1>'+p.name+'</h1></div><div class="lead">Estrutura do processo — preencher cada campo abaixo.</div>';
+  campos.forEach(function(c){var val=p.campos[c[1]];
+    d+='<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--surface-2);"><div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--accent-ink);margin-bottom:6px;">'+c[0]+'</div><div style="font-size:14px;color:'+(val?"var(--ink)":"var(--faint)")+';line-height:1.65;">'+(val||"A preencher.")+'</div></div>';});
+  return '<div class="layout"><div class="rail">'+railh+'</div><div class="panel">'+d+'</div></div>';
+}
+function wireProcfisc(){document.querySelectorAll("[data-pf]").forEach(function(el){el.onclick=function(){curPF=el.getAttribute("data-pf");render();};});}
+function controlesHtml(){
+  var itens=["Controle de Erros","Controle de INSS","Controle de ISS","Controle de Pagamentos Divergentes"];
+  var d='<div class="crumb">Controles</div><div class="titlerow"><h1>Controles</h1></div><div class="lead">Controles operacionais da área. Estrutura preparada para os controles abaixo.</div>';
+  itens.forEach(function(t){d+='<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--surface-2);"><div style="font-weight:600;margin-bottom:4px;">'+t+'</div><div style="font-size:13px;color:var(--faint);">A definir.</div></div>';});
+  d+='<div style="font-size:12.5px;color:var(--muted);margin-top:6px;">Novos controles poderão ser adicionados aqui.</div>';
+  return '<div class="panel panel-full">'+d+'</div>';
+}
+function responsaveisHtml(){
+  var d='<div class="crumb">Responsáveis</div><div class="titlerow"><h1>Responsáveis</h1></div><div class="lead">Responsáveis por processo e por unidade.</div>';
+  d+='<div style="border:1px solid var(--border);border-radius:10px;padding:16px 18px;background:var(--surface-2);color:var(--muted);font-size:14px;line-height:1.6;">Aguardando a planilha de responsáveis. Assim que enviada, será espelhada aqui — por processo e por unidade.</div>';
+  return '<div class="panel panel-full">'+d+'</div>';
 }
 document.addEventListener("keydown",function(e){if(view!=="present")return;
   if(e.key==="ArrowRight")document.getElementById("next")&&document.getElementById("next").click();
