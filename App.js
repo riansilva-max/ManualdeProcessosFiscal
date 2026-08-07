@@ -222,22 +222,39 @@ function pgNode(x,y,w,h,f,s,tc,title,sub,gf){
   return g+'</g>';
 }
 function pgLine(x1,y1,x2,y2,dash){return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#C9CFD8" stroke-width="1.5" marker-end="url(#arrow)"'+(dash?' stroke-dasharray="4 3"':'')+'/>';}
+function pgDiamond(cx,cy,w,h,f,s,tc,title,gf){
+  var pts=cx+','+(cy-h/2)+' '+(cx+w/2)+','+cy+' '+cx+','+(cy+h/2)+' '+(cx-w/2)+','+cy;
+  var g='<g'+(gf?' data-goflux="'+gf+'" style="cursor:pointer;"':'')+'>';
+  g+='<polygon points="'+pts+'" fill="'+f+'" stroke="'+s+'" stroke-width="1"/>';
+  g+='<text x="'+cx+'" y="'+cy+'" text-anchor="middle" dominant-baseline="central" fill="'+tc+'" font-size="12.5" font-weight="600" font-family="inherit">'+title+'</text>';
+  return g+'</g>';
+}
 function recMapSvg(){
-  var Bf="#E6F1FB",Bs="#185FA5",Bt="#0C447C", Gf="#E7F3EC",Gs="#2E7D46",Gt="#1E5B32", Rf="#FCEBEB",Rs="#D9534F",Rt="#8A2A26", Yf="#FBFAF7",Ys="#B4B2A9",Yt="#3A3A3A";
-  function lbl(x,y,anc,t){return '<text x="'+x+'" y="'+y+'" text-anchor="'+anc+'" fill="#8A8780" font-size="10" font-family="inherit">'+t+'</text>';}
-  var s='<svg viewBox="0 0 1160 400" width="100%" xmlns="http://www.w3.org/2000/svg" style="min-width:1000px;display:block;">'+ARROW;
-  s+=pgNode(20,58,170,60,Bf,Bs,Bt,"Nota chega","e-mail / portais / JIRA","recebimento");
-  s+=pgNode(240,58,160,60,Bf,Bs,Bt,"Localizar a nota","","recebimento");
-  s+=pgNode(450,58,190,60,Bf,Bs,Bt,"Conferir tipo e dados","fixo / variável / esporádica","classificacao");
-  s+=pgNode(690,58,150,60,Yf,Ys,Yt,"Nota localizada","");
-  s+=pgNode(890,58,175,60,Gf,Gs,Gt,"Segue para Análise","","analise");
-  s+=pgLine(190,88,238,88)+pgLine(400,88,448,88)+pgLine(640,88,688,88)+pgLine(840,88,888,88);
-  s+=pgNode(225,250,190,64,Rf,Rs,Rt,"Erro: não localizada","o que fazer — a definir");
-  s+=pgLine(305,118,305,248,true)+pgLine(335,248,335,120,true);
-  s+=lbl(300,196,"end","se der erro")+lbl(340,196,"start","resolvido, volta");
-  s+=pgNode(445,250,200,64,Rf,Rs,Rt,"Erro: sem pedido / duplicidade","o que fazer — a definir");
-  s+=pgLine(535,118,535,248,true)+pgLine(565,248,565,120,true);
-  s+=lbl(530,196,"end","se der erro")+lbl(570,196,"start","resolvido, volta");
+  var Bf="#E6F1FB",Bs="#185FA5",Bt="#0C447C", Df="#FBEFD8",Ds="#C9922E",Dt="#6B4A12", Gf="#E7F3EC",Gs="#2E7D46",Gt="#1E5B32", Rf="#FCEBEB",Rs="#D9534F",Rt="#8A2A26", Yf="#FBFAF7",Ys="#B4B2A9",Yt="#3A3A3A";
+  function lbl(x,y,anc,t){return '<text x="'+x+'" y="'+y+'" text-anchor="'+anc+'" fill="#8A8780" font-size="10.5" font-family="inherit">'+t+'</text>';}
+  var s='<svg viewBox="0 0 1400 340" width="100%" xmlns="http://www.w3.org/2000/svg" style="min-width:1240px;display:block;">'+ARROW;
+  // main nodes
+  s+=pgNode(20,60,150,56,Bf,Bs,Bt,"Nota chega","e-mail / portais / JIRA","recebimento");
+  s+=pgNode(210,60,140,56,Bf,Bs,Bt,"Localizar a nota","","recebimento");
+  s+=pgDiamond(440,88,120,74,Df,Ds,Dt,"Localizada?");
+  s+=pgNode(540,60,170,56,Bf,Bs,Bt,"Conferir tipo e dados","fixo / variável / esporádica","classificacao");
+  s+=pgDiamond(800,88,130,78,Df,Ds,Dt,"Pedido OK?");
+  s+=pgNode(905,60,140,56,Yf,Ys,Yt,"Nota localizada","");
+  s+=pgNode(1085,60,160,56,Gf,Gs,Gt,"Segue para Análise","","analise");
+  // main flow arrows
+  s+=pgLine(170,88,208,88)+pgLine(350,88,378,88);
+  s+=pgLine(500,88,538,88)+lbl(519,82,"middle","sim");
+  s+=pgLine(710,88,733,88);
+  s+=pgLine(865,88,903,88)+lbl(884,82,"middle","sim");
+  s+=pgLine(1045,88,1083,88);
+  // erro 1 (Localizada? nao)
+  s+=pgLine(440,125,440,238,true)+lbl(448,180,"start","não");
+  s+=pgNode(335,240,210,56,Rf,Rs,Rt,"Não localizada","o que fazer — a definir");
+  s+=pgLine(360,240,285,118,true)+lbl(300,150,"start","buscar de novo");
+  // erro 2 (Pedido OK? nao)
+  s+=pgLine(800,127,800,238,true)+lbl(808,180,"start","não");
+  s+=pgNode(690,240,230,56,Rf,Rs,Rt,"Sem pedido / duplicidade","o que fazer — a definir");
+  s+=pgLine(715,240,628,118,true)+lbl(655,150,"start","ajustado, volta");
   return s+'</svg>';
 }
 function procfiscHtml(){
