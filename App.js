@@ -224,18 +224,20 @@ function pgNode(x,y,w,h,f,s,tc,title,sub,gf){
 function pgLine(x1,y1,x2,y2,dash){return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#C9CFD8" stroke-width="1.5" marker-end="url(#arrow)"'+(dash?' stroke-dasharray="4 3"':'')+'/>';}
 function recMapSvg(){
   var Bf="#E6F1FB",Bs="#185FA5",Bt="#0C447C", Gf="#E7F3EC",Gs="#2E7D46",Gt="#1E5B32", Rf="#FCEBEB",Rs="#D9534F",Rt="#8A2A26", Yf="#FBFAF7",Ys="#B4B2A9",Yt="#3A3A3A";
-  var s='<svg viewBox="0 0 760 520" width="100%" xmlns="http://www.w3.org/2000/svg" style="max-width:760px;display:block;margin:0 auto;">'+ARROW;
-  s+=pgNode(280,20,200,56,Bf,Bs,Bt,"Nota chega","e-mail / portais / JIRA","recebimento");
-  s+=pgLine(380,76,380,128);
-  s+=pgNode(280,130,200,50,Bf,Bs,Bt,"Localizar a nota","","recebimento");
-  s+=pgLine(480,155,516,155,true); s+=pgNode(520,127,220,56,Rf,Rs,Rt,"Erro: não localizada","o que fazer — a definir");
-  s+=pgLine(380,180,380,232);
-  s+=pgNode(280,234,200,56,Bf,Bs,Bt,"Conferir tipo e dados","fixo / variável / esporádica","classificacao");
-  s+=pgLine(480,262,516,262,true); s+=pgNode(520,233,220,58,Rf,Rs,Rt,"Erro: sem pedido / duplicidade","o que fazer — a definir");
-  s+=pgLine(380,290,380,342);
-  s+=pgNode(280,344,200,48,Yf,Ys,Yt,"Nota localizada","");
-  s+=pgLine(380,392,380,432);
-  s+=pgNode(280,434,200,54,Gf,Gs,Gt,"Segue para Análise","","analise");
+  function lbl(x,y,anc,t){return '<text x="'+x+'" y="'+y+'" text-anchor="'+anc+'" fill="#8A8780" font-size="10" font-family="inherit">'+t+'</text>';}
+  var s='<svg viewBox="0 0 1160 400" width="100%" xmlns="http://www.w3.org/2000/svg" style="min-width:1000px;display:block;">'+ARROW;
+  s+=pgNode(20,58,170,60,Bf,Bs,Bt,"Nota chega","e-mail / portais / JIRA","recebimento");
+  s+=pgNode(240,58,160,60,Bf,Bs,Bt,"Localizar a nota","","recebimento");
+  s+=pgNode(450,58,190,60,Bf,Bs,Bt,"Conferir tipo e dados","fixo / variável / esporádica","classificacao");
+  s+=pgNode(690,58,150,60,Yf,Ys,Yt,"Nota localizada","");
+  s+=pgNode(890,58,175,60,Gf,Gs,Gt,"Segue para Análise","","analise");
+  s+=pgLine(190,88,238,88)+pgLine(400,88,448,88)+pgLine(640,88,688,88)+pgLine(840,88,888,88);
+  s+=pgNode(225,250,190,64,Rf,Rs,Rt,"Erro: não localizada","o que fazer — a definir");
+  s+=pgLine(305,118,305,248,true)+pgLine(335,248,335,120,true);
+  s+=lbl(300,196,"end","se der erro")+lbl(340,196,"start","resolvido, volta");
+  s+=pgNode(445,250,200,64,Rf,Rs,Rt,"Erro: sem pedido / duplicidade","o que fazer — a definir");
+  s+=pgLine(535,118,535,248,true)+pgLine(565,248,565,120,true);
+  s+=lbl(530,196,"end","se der erro")+lbl(570,196,"start","resolvido, volta");
   return s+'</svg>';
 }
 function procfiscHtml(){
