@@ -1,13 +1,10 @@
 /* ===== MOTOR / APP ===== */
 var P=Object.assign({}, PROC, FAQ, {calendario:CAL_ITEM});
+var CONCEPT_GERAL={"1":"classificacao","2":"classificacao","8":"classificacao","12":"classificacao","13":"classificacao"};
+function goFlux(k){tab="fluxo";view="hub";cur=k;filter="";renderTabs();render();try{window.scrollTo(0,0);}catch(e){}}
 
 var PROCFISC={
-  recebimento:{ name:"Recebimento e fontes de entrada", map:[
-    {step:"Nota chega", link:"recebimento", desc:"A nota ou fatura chega por uma das fontes de entrada: <span data-goflux='recebimento' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>e-mail do Fiscal</span>, <span data-goflux='recebimento' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>portais/prefeituras</span> ou <span data-goflux='recebimento' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>chamado no JIRA</span>.", erros:[{e:"A definir (ex.: nota chega no e-mail errado)",f:"A definir."}]},
-    {step:"Localizar a nota", link:"recebimento", desc:"Localizar a nota no portal correspondente e baixar/confirmar o documento.", erros:[{e:"A definir (ex.: nota não localizada em nenhum portal)",f:"A definir."}]},
-    {step:"Conferir tipo e dados", link:"classificacao", desc:"Conferir se a nota tem pedido/contrato e identificar o tipo: <span data-goflux='classificacao' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>contrato fixo</span>, <span data-goflux='classificacao' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>contrato variável</span> ou <span data-goflux='classificacao' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>esporádica</span>.", erros:[{e:"A definir (ex.: nota sem pedido/contrato)",f:"A definir."},{e:"A definir (ex.: nota em duplicidade)",f:"A definir."}]},
-    {step:"Nota localizada", link:"analise", desc:"Com a nota localizada e conferida, segue para a <span data-goflux='analise' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>Análise de nota fiscal</span>.", erros:[]}
-  ] },
+  recebimento:{ name:"Recebimento e fontes de entrada", svgmap:true },
   classificacao:{name:"Classificação da nota", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}},
   analise:{name:"Análise da nota", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}},
   chamados:{name:"Abertura de chamados", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}}
@@ -195,7 +192,13 @@ function wirePresent(){
   document.getElementById("prev").onclick=function(){stepIdx=Math.max(0,stepIdx>0?stepIdx-1:0);applyHighlight();};
   document.getElementById("next").onclick=function(){stepIdx=Math.min(stepIdx+1,P[cur].steps.length-1);applyHighlight();};
   document.getElementById("showall").onclick=function(){stepIdx=-1;applyHighlight();};
-  document.querySelectorAll('#flow .fnode[data-i]').forEach(function(n){n.style.cursor="pointer";n.addEventListener("click",function(){stepIdx=parseInt(n.getAttribute("data-i"));applyHighlight();});});
+  document.querySelectorAll('#flow .fnode[data-i]').forEach(function(n){
+    n.style.cursor="pointer";
+    var i=n.getAttribute("data-i");
+    var concept=(cur==="geral")?CONCEPT_GERAL[i]:null;
+    if(concept){ n.addEventListener("click",function(e){e.stopPropagation();goFlux(concept);}); }
+    else { n.addEventListener("click",function(){stepIdx=parseInt(i);applyHighlight();}); }
+  });
   applyHighlight();
 }
 function render(){
@@ -206,22 +209,44 @@ function render(){
   root.innerHTML=hubHtml();
   wireHub();
 }
+function pgNode(x,y,w,h,f,s,tc,title,sub,gf){
+  var cx=x+w/2, g='<g'+(gf?' data-goflux="'+gf+'" style="cursor:pointer;"':'')+'>';
+  g+='<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="9" fill="'+f+'" stroke="'+s+'" stroke-width="1"/>';
+  if(sub){
+    g+='<text x="'+cx+'" y="'+(y+h/2-8)+'" text-anchor="middle" dominant-baseline="central" fill="'+tc+'" font-size="14" font-weight="600" font-family="inherit">'+title+'</text>';
+    g+='<text x="'+cx+'" y="'+(y+h/2+11)+'" text-anchor="middle" dominant-baseline="central" fill="'+tc+'" font-size="11.5" opacity="0.85" font-family="inherit">'+sub+'</text>';
+  } else {
+    g+='<text x="'+cx+'" y="'+(y+h/2)+'" text-anchor="middle" dominant-baseline="central" fill="'+tc+'" font-size="14" font-weight="600" font-family="inherit">'+title+'</text>';
+  }
+  if(gf) g+='<text x="'+(x+w-10)+'" y="'+(y+16)+'" text-anchor="end" fill="'+s+'" font-size="12">↗</text>';
+  return g+'</g>';
+}
+function pgLine(x1,y1,x2,y2,dash){return '<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#C9CFD8" stroke-width="1.5" marker-end="url(#arrow)"'+(dash?' stroke-dasharray="4 3"':'')+'/>';}
+function recMapSvg(){
+  var Bf="#E6F1FB",Bs="#185FA5",Bt="#0C447C", Gf="#E7F3EC",Gs="#2E7D46",Gt="#1E5B32", Rf="#FCEBEB",Rs="#D9534F",Rt="#8A2A26", Yf="#FBFAF7",Ys="#B4B2A9",Yt="#3A3A3A";
+  var s='<svg viewBox="0 0 760 520" width="100%" xmlns="http://www.w3.org/2000/svg" style="max-width:760px;display:block;margin:0 auto;">'+ARROW;
+  s+=pgNode(280,20,200,56,Bf,Bs,Bt,"Nota chega","e-mail / portais / JIRA","recebimento");
+  s+=pgLine(380,76,380,128);
+  s+=pgNode(280,130,200,50,Bf,Bs,Bt,"Localizar a nota","","recebimento");
+  s+=pgLine(480,155,516,155,true); s+=pgNode(520,127,220,56,Rf,Rs,Rt,"Erro: não localizada","o que fazer — a definir");
+  s+=pgLine(380,180,380,232);
+  s+=pgNode(280,234,200,56,Bf,Bs,Bt,"Conferir tipo e dados","fixo / variável / esporádica","classificacao");
+  s+=pgLine(480,262,516,262,true); s+=pgNode(520,233,220,58,Rf,Rs,Rt,"Erro: sem pedido / duplicidade","o que fazer — a definir");
+  s+=pgLine(380,290,380,342);
+  s+=pgNode(280,344,200,48,Yf,Ys,Yt,"Nota localizada","");
+  s+=pgLine(380,392,380,432);
+  s+=pgNode(280,434,200,54,Gf,Gs,Gt,"Segue para Análise","","analise");
+  return s+'</svg>';
+}
 function procfiscHtml(){
   if(!curPF)curPF=ORDER_PROCFISC[0];
   var railh='<div class="sec-label">Processos</div>';
   ORDER_PROCFISC.forEach(function(k){railh+='<div class="item'+(k===curPF?" active":"")+'" data-pf="'+k+'"><span class="name">'+PROCFISC[k].name+'</span></div>';});
   var p=PROCFISC[curPF];
   var d='<div class="crumb">Processos Fiscais</div><div class="titlerow"><h1>'+p.name+'</h1></div>';
-  if(p.map){
-    d+='<div class="lead">Passo a passo do processo, com os caminhos quando dá erro. Toque nos termos em azul para ver o conceito no Fluxo Fiscal.</div>';
-    p.map.forEach(function(s,idx){
-      d+='<div style="border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:var(--surface);">';
-      d+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="background:var(--accent);color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none;">'+(idx+1)+'</span><span style="font-weight:600;font-size:15px;flex:1;">'+s.step+'</span>'+(s.link?'<span data-goflux="'+s.link+'" style="font-size:12px;color:var(--accent);text-decoration:underline;cursor:pointer;white-space:nowrap;">ver conceito ↗</span>':'')+'</div>';
-      d+='<div style="font-size:14px;color:var(--ink);line-height:1.65;">'+s.desc+'</div>';
-      (s.erros||[]).forEach(function(er){d+='<div style="margin-top:10px;border:1px solid var(--danger);background:var(--danger-soft);border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--danger-ink);margin-bottom:2px;">&#9888; Se der erro: '+er.e+'</div><div style="font-size:13px;color:var(--danger-ink);">O que fazer: '+er.f+'</div></div>';});
-      d+='</div>';
-      if(idx<p.map.length-1)d+='<div style="text-align:center;color:var(--faint);font-size:20px;margin:2px 0 6px;">&#8595;</div>';
-    });
+  if(p.svgmap){
+    d+='<div class="lead">Mapa do processo. As caixas <b style="color:var(--accent);">azuis</b> são clicáveis e levam ao conceito no Fluxo Fiscal; as caixas <b style="color:var(--danger);">vermelhas</b> mostram os possíveis erros e o que fazer.</div>';
+    d+='<div style="border:1px solid var(--border);border-radius:12px;padding:16px;background:var(--surface);overflow-x:auto;">'+recMapSvg()+'</div>';
   } else {
     var campos=[["Objetivo","objetivo"],["Descrição","descricao"],["Responsáveis","responsaveis"],["Passo a passo","passos"],["Exceções","excecoes"],["Observações","observacoes"]];
     d+='<div class="lead">Estrutura do processo — preencher cada campo abaixo.</div>';
@@ -231,7 +256,7 @@ function procfiscHtml(){
 }
 function wireProcfisc(){
   document.querySelectorAll("[data-pf]").forEach(function(el){el.onclick=function(){curPF=el.getAttribute("data-pf");render();};});
-  document.querySelectorAll("[data-goflux]").forEach(function(el){el.onclick=function(ev){ev.stopPropagation();var k=el.getAttribute("data-goflux");tab="fluxo";view="hub";cur=k;filter="";renderTabs();render();try{window.scrollTo(0,0);}catch(e){}};});
+  document.querySelectorAll("[data-goflux]").forEach(function(el){el.onclick=function(ev){ev.stopPropagation();goFlux(el.getAttribute("data-goflux"));};});
 }
 function controlesHtml(){
   var itens=["Controle de Erros","Controle de INSS","Controle de ISS","Controle de Pagamentos Divergentes"];
