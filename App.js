@@ -2,11 +2,17 @@
 var P=Object.assign({}, PROC, FAQ, {calendario:CAL_ITEM});
 
 var PROCFISC={
+  recebimento:{ name:"Recebimento e fontes de entrada", map:[
+    {step:"Nota chega", link:"recebimento", desc:"A nota ou fatura chega por uma das fontes de entrada: <span data-goflux='recebimento' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>e-mail do Fiscal</span>, <span data-goflux='recebimento' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>portais/prefeituras</span> ou <span data-goflux='recebimento' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>chamado no JIRA</span>.", erros:[{e:"A definir (ex.: nota chega no e-mail errado)",f:"A definir."}]},
+    {step:"Localizar a nota", link:"recebimento", desc:"Localizar a nota no portal correspondente e baixar/confirmar o documento.", erros:[{e:"A definir (ex.: nota não localizada em nenhum portal)",f:"A definir."}]},
+    {step:"Conferir tipo e dados", link:"classificacao", desc:"Conferir se a nota tem pedido/contrato e identificar o tipo: <span data-goflux='classificacao' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>contrato fixo</span>, <span data-goflux='classificacao' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>contrato variável</span> ou <span data-goflux='classificacao' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>esporádica</span>.", erros:[{e:"A definir (ex.: nota sem pedido/contrato)",f:"A definir."},{e:"A definir (ex.: nota em duplicidade)",f:"A definir."}]},
+    {step:"Nota localizada", link:"analise", desc:"Com a nota localizada e conferida, segue para a <span data-goflux='analise' style='color:var(--accent);text-decoration:underline;cursor:pointer;font-weight:500;'>Análise de nota fiscal</span>.", erros:[]}
+  ] },
   classificacao:{name:"Classificação da nota", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}},
   analise:{name:"Análise da nota", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}},
   chamados:{name:"Abertura de chamados", campos:{objetivo:"",descricao:"",responsaveis:"",passos:"",excecoes:"",observacoes:""}}
 };
-var ORDER_PROCFISC=["classificacao","analise","chamados"];
+var ORDER_PROCFISC=["recebimento","classificacao","analise","chamados"];
 
 var STAT={pronto:["var(--ok)","pronto"],rascunho:["var(--draft)","rascunho"],vazio:["var(--empty)","a preencher"]};
 var cur="geral", view="hub", filter="", stepIdx=-1, catOpen={}, selCal=null, nearOpen=false, calMonthOpen=null, calYear=null, calCollapsed=false, calView="mes", curPF=null, tab="fluxo";
@@ -205,13 +211,28 @@ function procfiscHtml(){
   var railh='<div class="sec-label">Processos</div>';
   ORDER_PROCFISC.forEach(function(k){railh+='<div class="item'+(k===curPF?" active":"")+'" data-pf="'+k+'"><span class="name">'+PROCFISC[k].name+'</span></div>';});
   var p=PROCFISC[curPF];
-  var campos=[["Objetivo","objetivo"],["Descrição","descricao"],["Responsáveis","responsaveis"],["Passo a passo","passos"],["Exceções","excecoes"],["Observações","observacoes"]];
-  var d='<div class="crumb">Processos Fiscais</div><div class="titlerow"><h1>'+p.name+'</h1></div><div class="lead">Estrutura do processo — preencher cada campo abaixo.</div>';
-  campos.forEach(function(c){var val=p.campos[c[1]];
-    d+='<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--surface-2);"><div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--accent-ink);margin-bottom:6px;">'+c[0]+'</div><div style="font-size:14px;color:'+(val?"var(--ink)":"var(--faint)")+';line-height:1.65;">'+(val||"A preencher.")+'</div></div>';});
+  var d='<div class="crumb">Processos Fiscais</div><div class="titlerow"><h1>'+p.name+'</h1></div>';
+  if(p.map){
+    d+='<div class="lead">Passo a passo do processo, com os caminhos quando dá erro. Toque nos termos em azul para ver o conceito no Fluxo Fiscal.</div>';
+    p.map.forEach(function(s,idx){
+      d+='<div style="border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:var(--surface);">';
+      d+='<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="background:var(--accent);color:#fff;width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex:none;">'+(idx+1)+'</span><span style="font-weight:600;font-size:15px;flex:1;">'+s.step+'</span>'+(s.link?'<span data-goflux="'+s.link+'" style="font-size:12px;color:var(--accent);text-decoration:underline;cursor:pointer;white-space:nowrap;">ver conceito ↗</span>':'')+'</div>';
+      d+='<div style="font-size:14px;color:var(--ink);line-height:1.65;">'+s.desc+'</div>';
+      (s.erros||[]).forEach(function(er){d+='<div style="margin-top:10px;border:1px solid var(--danger);background:var(--danger-soft);border-radius:8px;padding:10px 12px;"><div style="font-size:12px;font-weight:600;color:var(--danger-ink);margin-bottom:2px;">&#9888; Se der erro: '+er.e+'</div><div style="font-size:13px;color:var(--danger-ink);">O que fazer: '+er.f+'</div></div>';});
+      d+='</div>';
+      if(idx<p.map.length-1)d+='<div style="text-align:center;color:var(--faint);font-size:20px;margin:2px 0 6px;">&#8595;</div>';
+    });
+  } else {
+    var campos=[["Objetivo","objetivo"],["Descrição","descricao"],["Responsáveis","responsaveis"],["Passo a passo","passos"],["Exceções","excecoes"],["Observações","observacoes"]];
+    d+='<div class="lead">Estrutura do processo — preencher cada campo abaixo.</div>';
+    campos.forEach(function(c){var val=p.campos[c[1]];d+='<div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;background:var(--surface-2);"><div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--accent-ink);margin-bottom:6px;">'+c[0]+'</div><div style="font-size:14px;color:'+(val?"var(--ink)":"var(--faint)")+';line-height:1.65;">'+(val||"A preencher.")+'</div></div>';});
+  }
   return '<div class="layout"><div class="rail">'+railh+'</div><div class="panel">'+d+'</div></div>';
 }
-function wireProcfisc(){document.querySelectorAll("[data-pf]").forEach(function(el){el.onclick=function(){curPF=el.getAttribute("data-pf");render();};});}
+function wireProcfisc(){
+  document.querySelectorAll("[data-pf]").forEach(function(el){el.onclick=function(){curPF=el.getAttribute("data-pf");render();};});
+  document.querySelectorAll("[data-goflux]").forEach(function(el){el.onclick=function(ev){ev.stopPropagation();var k=el.getAttribute("data-goflux");tab="fluxo";view="hub";cur=k;filter="";renderTabs();render();try{window.scrollTo(0,0);}catch(e){}};});
+}
 function controlesHtml(){
   var itens=["Controle de Erros","Controle de INSS","Controle de ISS","Controle de Pagamentos Divergentes"];
   var d='<div class="crumb">Controles</div><div class="titlerow"><h1>Controles</h1></div><div class="lead">Controles operacionais da área. Estrutura preparada para os controles abaixo.</div>';
