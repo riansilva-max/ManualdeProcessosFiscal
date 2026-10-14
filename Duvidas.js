@@ -14,6 +14,11 @@ var FAQ={
     processo:"Lançar todas as notas com impostos ANTES do fechamento da compensação. Exemplo: se a compensação fecha na terça, dia 04/08, lançar todas as notas de julho até o dia 04 com a data 31/07.",
     solucao:"Depois que a compensação fecha (após o dia 04), o lançamento segue com a data normal do sistema. Sempre priorizar lançar dentro da compensação."
   } },
+  faq_plandoc:{ sec:"Dúvidas recorrentes", cat:"Planilha de Contratos", name:"Registrar pelo documento ou pelo lançamento?", faq:{
+    problema:"Dúvida se o número da nota/fatura deve ser registrado na planilha conforme consta no documento (nota/fatura) ou conforme foi lançado no SAP.",
+    processo:"Sempre registrar na planilha o número da nota/fatura conforme o DOCUMENTO — nunca conforme o lançamento. Essa regra vale inclusive para emissões retroativas, já que a nota pode ser emitida no mês posterior ao período de competência do contrato.",
+    solucao:"Confira sempre o número exato impresso na nota ou fatura antes de preencher a célula correspondente."
+  } },
   faq_codserv:{ sec:"Dúvidas recorrentes", cat:"Lançamento", name:"Código de serviço não está no carimbo", faq:{
     problema:"O código de serviço da nota fiscal não aparece no carimbo.",
     processo:"Verificar no Portal CCM se o código do serviço da NF está cadastrado na prefeitura. Se estiver, pedir a atualização do carimbo. Se não estiver, questionar o prestador sobre o código na NF (obs.: isso não barra o pagamento).",
@@ -65,4 +70,4 @@ var FAQ={
     solucao:"A análise diária evita compensações desnecessárias e retrabalho. (Responsável pela planilha a definir.)"
   } }
 };
-var ORDER_FAQ=["faq_codverif", "faq_ref", "faq_comp", "faq_codserv", "faq_encontro", "faq_zbnf", "faq_unico", "faq_contratos", "faq_semcontrato", "faq_condpag", "faq_bloqlinha", "faq_email", "faq_erros"];
+var ORDER_FAQ=["faq_codverif", "faq_ref", "faq_plandoc", "faq_comp", "faq_codserv", "faq_encontro", "faq_zbnf", "faq_unico", "faq_contratos", "faq_semcontrato", "faq_condpag", "faq_bloqlinha", "faq_email", "faq_erros"];
