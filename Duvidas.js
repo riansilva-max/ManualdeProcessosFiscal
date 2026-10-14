@@ -14,6 +14,11 @@ var FAQ={
     processo:"Lançar todas as notas com impostos ANTES do fechamento da compensação. Exemplo: se a compensação fecha na terça, dia 04/08, lançar todas as notas de julho até o dia 04 com a data 31/07.",
     solucao:"Depois que a compensação fecha (após o dia 04), o lançamento segue com a data normal do sistema. Sempre priorizar lançar dentro da compensação."
   } },
+  faq_codserv:{ sec:"Dúvidas recorrentes", cat:"Lançamento", name:"Código de serviço não está no carimbo", faq:{
+    problema:"O código de serviço da nota fiscal não aparece no carimbo.",
+    processo:"Verificar no Portal CCM se o código do serviço da NF está cadastrado na prefeitura. Se estiver, pedir a atualização do carimbo. Se não estiver, questionar o prestador sobre o código na NF (obs.: isso não barra o pagamento).",
+    solucao:"Concluído o processo, seguir com o carimbo e, logo depois, o lançamento da NF."
+  } },
   faq_encontro:{ sec:"Dúvidas recorrentes", cat:"Lançamento", name:"Encontro de contas / estacionamento", faq:{
     problema:"Notas de encontro de contas não podem ser pagas nem desbloqueadas indevidamente, pois atrapalham a conciliação da tesouraria.",
     processo:"Manter a nota BLOQUEADA. Na planilha de controle fiscal, a observação do serviço indica quando é encontro de contas. No SAP, deixar a observação, por exemplo: ENCONTRO DE CONTAS, NÃO DESBLOQUEAR.",
@@ -60,4 +65,4 @@ var FAQ={
     solucao:"A análise diária evita compensações desnecessárias e retrabalho. (Responsável pela planilha a definir.)"
   } }
 };
-var ORDER_FAQ=["faq_codverif", "faq_ref", "faq_comp", "faq_encontro", "faq_zbnf", "faq_unico", "faq_contratos", "faq_semcontrato", "faq_condpag", "faq_bloqlinha", "faq_email", "faq_erros"];
+var ORDER_FAQ=["faq_codverif", "faq_ref", "faq_comp", "faq_codserv", "faq_encontro", "faq_zbnf", "faq_unico", "faq_contratos", "faq_semcontrato", "faq_condpag", "faq_bloqlinha", "faq_email", "faq_erros"];

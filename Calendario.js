@@ -6,4 +6,4 @@ const COMPET_FECHA="2026-08-05";
 var CAL_ITEM={ sec:"Calendário", name:"Calendário / Avisos", calendar:true };
 var EVENTOS={
   "2026-07-31":["Café às 9h","Reunião de apresentação às 14h"]
-}
+};

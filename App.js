@@ -16,7 +16,7 @@ var PROCFISC={
 var ORDER_PROCFISC=["recebimento","classificacao","analise","carimbo","lancamento","chamados","armazenamento","fechamento"];
 
 var STAT={pronto:["var(--ok)","pronto"],rascunho:["var(--draft)","rascunho"],vazio:["var(--empty)","a preencher"]};
-var cur="geral", view="hub", filter="", stepIdx=-1, catOpen={}, selCal=null, nearOpen=false, calMonthOpen=null, calYear=null, calCollapsed=false, calView="mes", curPF=null, tab="fluxo";
+var cur="recebimento", view="hub", filter="", stepIdx=-1, catOpen={}, selCal=null, nearOpen=false, calMonthOpen=null, calYear=null, calCollapsed=false, calView="mes", curPF=null, tab="fluxo";
 var root=document.getElementById("root");
 
 function wrap(d){
@@ -44,9 +44,8 @@ function railHtml(){
 function hubHtml(){
   if(cur==="geral"){
     var dg='<div class="crumb">Fluxo fiscal</div><div class="titlerow" style="margin-bottom:8px;"><h1 style="font-size:22px;">Fluxo fiscal completo</h1></div>'
-      +'<button class="cta" id="fullflow-btn" style="margin-bottom:12px;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Abrir fluxo completo detalhado (nova aba)</button>'
-      +'<div style="font-size:12.5px;color:var(--muted);margin-bottom:10px;">Visão geral abaixo — toque nas caixas azuis para ir ao detalhe de cada etapa. Para o fluxo inteiro detalhado em tela cheia, use o botão acima.</div>'
-      +'<div style="border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px;overflow:auto;max-height:calc(100vh - 340px);">'+geralMapSvg()+'</div>';
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px;max-width:640px;">O fluxo inteiro do setor, com todas as etapas, decisões e erros. Abre em tela cheia numa nova aba, para uma visualização melhor.</div>'
+      +'<button class="cta" id="fullflow-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Abrir fluxo completo (tela cheia)</button>';
     return wrap(dg);
   }
   const p=P[cur],[,label]=(STAT[p.status]||["",""]);
@@ -179,7 +178,7 @@ function renderTabs(){
 }
 function switchTab(t){
   tab=t; view="hub"; stepIdx=-1; filter="";
-  if(t==="fluxo")cur="geral";
+  if(t==="fluxo")cur="recebimento";
   else if(t==="duvidas"){cur=ORDER_FAQ[0]; catOpen[P[ORDER_FAQ[0]].cat]=true;}
   else if(t==="calendario"){ cur="calendario"; var _t=new Date(); calYear=_t.getFullYear(); calMonthOpen=_t.getMonth(); selCal=calIso(_t.getFullYear(),_t.getMonth(),_t.getDate()); calCollapsed=false; }
   else if(t==="processos"){ curPF=ORDER_PROCFISC[0]; }
@@ -306,6 +305,26 @@ function fullFlowSvg(){
   s+=pgOval(3390,400,70,44,Of,Os,Ot,"Fim","");
   /* legenda */
   return s+'</svg>';
+}
+function openProcFull(key){
+  var name=(typeof PROCFISC!=="undefined"&&PROCFISC[key]&&PROCFISC[key].name)||"Processo";
+  var fns=[bx,ln,elb,conv,elbBack,recLbl,di_plus,pmBW,pmBH,pmExpW,buildProcMap,recMapSvg];
+  var src=fns.map(function(f){return f.toString();}).join("\n");
+  var mapExpr = key==="recebimento" ? "recMapSvg()" : ("buildProcMap(PROCMAP["+JSON.stringify(key)+"])");
+  var js="var C="+JSON.stringify(C)+";var ARROW="+JSON.stringify(ARROW)+";var PM="+JSON.stringify(PM)+";var PROCMAP="+JSON.stringify(PROCMAP)+";var recOpen={};"
+    +src
+    +";function recToggle(k){recOpen[k]=!recOpen[k];draw();}window.recToggle=recToggle;"
+    +"function draw(){document.getElementById('map').innerHTML="+mapExpr+";}draw();";
+  var html='<!DOCTYPE html><html lang=\"pt-BR\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>'+name+'</title>'
+    +'<style>*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#EEF2F7;color:#1F2A37}'
+    +'header{padding:14px 24px;background:#184CA0;color:#fff}header h1{margin:0;font-size:18px;font-weight:600}header p{margin:3px 0 0;font-size:12.5px;opacity:.85}'
+    +'.scroll{height:calc(100vh - 60px);padding:16px;display:flex}#map{flex:1;min-width:0;min-height:0;display:flex}#map svg{width:100%;height:100%}</style></head>'
+    +'<body><header><h1>'+name+'</h1><p>Processo em tela cheia. Toque nos + para abrir as ramificações.</p></header>'
+    +'<div class=\"scroll\"><div id=\"map\"></div></div>'
+    +'<scr'+'ipt>'+js+'</scr'+'ipt></body></html>';
+  var w=window.open("","_blank");
+  if(w){w.document.open();w.document.write(html);w.document.close();}
+  else alert("Permita pop-ups para abrir em nova aba.");
 }
 function openFullFlow(){
   var svg=fullFlowSvg();
@@ -855,6 +874,7 @@ function procfiscHtml(){
   if(p.svgmap){
     var d='<div class="crumb" style="margin-bottom:2px;">Processos Fiscais</div>';
     d+='<div class="titlerow" style="margin-bottom:8px;"><h1 style="font-size:21px;">'+p.name+'</h1></div>';
+    d+='<button class="cta" id="procfull-btn" style="margin-bottom:10px;align-self:flex-start;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>Abrir em tela cheia (nova aba)</button>';
     d+='<div style="flex:1;min-height:0;position:relative;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:6px 8px;">';
     d+=(curPF==="recebimento"?recMapSvg():buildProcMap(PROCMAP[curPF]));
     d+='</div>';
@@ -868,6 +888,7 @@ function procfiscHtml(){
 }
 function railHtml_pf(h){return h;}
 function wireProcfisc(){
+  var _pf=document.getElementById("procfull-btn"); if(_pf)_pf.onclick=function(){openProcFull(curPF);};
   document.querySelectorAll("[data-pf]").forEach(function(el){el.onclick=function(){curPF=el.getAttribute("data-pf");render();};});
   document.querySelectorAll("[data-goflux]").forEach(function(el){el.onclick=function(ev){ev.stopPropagation();goFlux(el.getAttribute("data-goflux"));};});
 }

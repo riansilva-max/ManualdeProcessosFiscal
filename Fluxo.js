@@ -552,4 +552,4 @@ var PROC={
       {t:"Responsáveis",d:"Cada fiscal inclui o número das notas que lança nas colunas dos meses. As alterações mais pesadas — incluir ou excluir linhas e atualizar os pedidos — são feitas somente por Tânia Gouveia, responsável pela planilha."}
     ], flow:FLOW_PLAN }
 };
-var ORDER_FLUXO=["geral", "recebimento", "classificacao", "analise", "carimbo", "lancamento", "jira", "armazenamento", "fechamento"];
+var ORDER_FLUXO=["recebimento", "classificacao", "analise", "carimbo", "lancamento", "jira", "armazenamento", "fechamento", "geral"];
