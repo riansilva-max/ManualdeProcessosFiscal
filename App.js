@@ -18,6 +18,7 @@ var ICO={
   planilha:'<rect x="4" y="3.5" width="16" height="17" rx="2"/><path d="M4 9h16M4 14.5h16M10 9v11.5"/>',
   fornecedor:'<path d="M4 9.5 5.5 4.5h13L20 9.5"/><path d="M4 9.5h16v1.2a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0 2.7 2.7 0 0 1-5.3 0z"/><path d="M5.5 12.8v7.7h13v-7.7"/>',
   mural:'<path d="M4 5.5h16v10H9.5L4 19.5z"/>',
+  check:'<path d="m5 12.5 4.3 4.3L19 7"/>',
   historico:'<path d="M4.2 12a7.8 7.8 0 1 0 2.3-5.5"/><path d="M4 4.5v4h4"/><path d="M12 8v4.3l2.8 1.7"/>',
   mais:'<path d="M12 5v14M5 12h14"/>',
   email:'<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>',
@@ -162,7 +163,7 @@ function setEmail(c){ var n=emailNorm(c); if(n!==CUREMAIL){ try{ inicioCompose=f
 function updateEmailBadge(){ var el=document.getElementById("emailBadge"); if(!el)return;
   if(CUREMAIL){ var loc=CUREMAIL.split("@")[0]; el.innerHTML='<span class="av">'+calEsc(loc.charAt(0).toUpperCase())+'</span><span class="em">'+calEsc(loc)+'</span>'; el.title=CUREMAIL+" (clique para trocar)"; }
   else { el.innerHTML='<span class="av off">?</span><span class="em">Entrar</span>'; el.title="Entrar com e-mail"; }
-  el.onclick=function(){ var cov=document.getElementById("cover"); var inp=document.getElementById("coverEmail"); if(inp)inp.value=CUREMAIL; var er=document.getElementById("coverEmailErr"); if(er)er.textContent=""; if(cov)cov.style.display=""; };
+  el.onclick=function(){ var cov=document.getElementById("cover"); var inp=document.getElementById("coverEmail"); if(inp)inp.value=CUREMAIL; var er=document.getElementById("coverEmailErr"); if(er)er.textContent=""; if(cov)cov.style.display=""; if(AUTH_ON&&!AUTH_USER&&GSI_OK) gsiBotao(); };
   el.onkeydown=function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); el.click(); } };
 }
 function notesKey(){ return "manual_notes_"+CUREMAIL; }
@@ -326,9 +327,12 @@ var NCAT={ pendencia:{l:"Pendência",b:"#D7263D",bg:"#FCE8EA",ink:"#A01B2C"},
   tratativa:{l:"Em tratativa",b:"#D9A62E",bg:"#FEF3D6",ink:"#8A6D1A"} };
 var NCAT_ORDER=["pendencia","aviso","tratativa"];
 /* situação de pendências e tratativas: começa "em aberto" e muda a cada atualização publicada */
-var NSIT={ aberto:"Em aberto", andamento:"Em andamento", resolvido:"Resolvido" };
+var NSIT={ aberto:"Em aberto", andamento:"Em andamento", resolvido:"Concluído" };
 var NSIT_ORDER=["aberto","andamento","resolvido"];
 var ATUAL_LIVE=[], ATUAL_OK=false;
+/* "ciente": quem já viu cada publicação (tabela mural_cientes); EQUIPE = lista de acesso, para mostrar quem falta */
+var CIENTES_LIVE=[], CIENTE_OK=false, EQUIPE=null, cienteAberto={};
+var TXT_CONCLUIDO="Concluído.";
 function getNoticias(){ if(DB_READY) return window.NOTICIAS_LIVE||[]; if(window.NOTICIAS_LIVE&&window.NOTICIAS_LIVE.length) return window.NOTICIAS_LIVE; return (typeof NOTICIAS!=="undefined"&&NOTICIAS)?NOTICIAS:[]; }
 function nCat(n){ return NCAT[n.cat]?n.cat:"aviso"; }
 function nKey(n){ return n._id?String(n._id):("s:"+(n.data||"")+":"+(n.titulo||"")); }
@@ -346,7 +350,7 @@ function nAtualizacoes(n){
   return L.sort(function(a,b){ return a.ord-b.ord; });
 }
 function nSitInicial(n){ return NSIT[n.status]?n.status:"aberto"; }
-function nSit(n){ if(nCat(n)==="aviso") return ""; var s=nSitInicial(n); nAtualizacoes(n).forEach(function(u){ if(NSIT[u.status]) s=u.status; }); return s; }
+function nSit(n){ var s=(nCat(n)==="aviso")?"":nSitInicial(n); nAtualizacoes(n).forEach(function(u){ if(NSIT[u.status]) s=u.status; }); return s; }
 function nUltimaData(n){ var a=nAtualizacoes(n); return a.length?(a[a.length-1].data||n.data||""):(n.data||""); }
 function diasDesde(iso){ if(!iso) return 9999; var p=String(iso).split("-"), d=new Date(+p[0],+p[1]-1,+p[2]), h=new Date(); h=new Date(h.getFullYear(),h.getMonth(),h.getDate()); return Math.round((h-d)/864e5); }
 function quandoTxt(iso){ var d=diasDesde(iso); return d===0?"hoje":(d===1?"ontem":(d>1?"há "+d+" dias":"")); }
@@ -360,26 +364,33 @@ var DB_READY=false, DB=null;
 function dbTabela(){ return (typeof SUPABASE_TABELA!=="undefined"&&SUPABASE_TABELA)?SUPABASE_TABELA:"mural_noticias"; }
 function dbEnabled(){ return (typeof SUPABASE_URL!=="undefined") && /^https:\/\//.test(SUPABASE_URL||"") && (typeof SUPABASE_CHAVE!=="undefined") && !!SUPABASE_CHAVE
   && (typeof supabase!=="undefined") && !!supabase.createClient; }
+function dbTabelaCiente(){ return (typeof SUPABASE_TABELA_CIENTE!=="undefined"&&SUPABASE_TABELA_CIENTE)?SUPABASE_TABELA_CIENTE:"mural_cientes"; }
 function dbTabelaAt(){ return (typeof SUPABASE_TABELA_ATUAL!=="undefined"&&SUPABASE_TABELA_ATUAL)?SUPABASE_TABELA_ATUAL:"mural_atualizacoes"; }
 function dbCarregar(){
   var qa=DB.from(dbTabela()).select("id,data,cat,titulo,texto,autor,email,criado_em").order("criado_em",{ascending:false}).limit(2000);
   /* atualizações: se a tabela ainda não existir (SQL da parte 3), o mural segue funcionando sem elas */
   var qb=Promise.resolve(DB.from(dbTabelaAt()).select("id,noticia_id,criado_em,texto,status,autor,email").order("criado_em",{ascending:true}).limit(10000)).then(null,function(e){ return {error:e}; });
-  return Promise.all([qa,qb]).then(function(rs){
-    var r=rs[0], u=rs[1]; if(r.error) throw r.error;
+  var qc=Promise.resolve(DB.from(dbTabelaCiente()).select("noticia_id,email,nome,criado_em").order("criado_em",{ascending:true}).limit(20000)).then(null,function(e){ return {error:e}; });
+  var qe=(EQUIPE||!DB.rpc)?Promise.resolve(null):Promise.resolve(DB.rpc("equipe")).then(null,function(e){ return {error:e}; });
+  return Promise.all([qa,qb,qc,qe]).then(function(rs){
+    var r=rs[0], u=rs[1], c=rs[2], e=rs[3]; if(r.error) throw r.error;
     window.NOTICIAS_LIVE=(r.data||[]).map(function(o){ o._id=String(o.id); return o; });
     ATUAL_OK=!!(u&&!u.error); ATUAL_LIVE=ATUAL_OK?(u.data||[]):[];
+    CIENTE_OK=!!(c&&!c.error); CIENTES_LIVE=CIENTE_OK?(c.data||[]):[];
+    if(e&&!e.error&&Array.isArray(e.data)) EQUIPE=e.data;
     if(tab==="inicio") renderInicioSafe();
   });
 }
 /* redesenha a página inicial sem perder o que a pessoa está digitando nem a rolagem da lista do histórico */
 function renderInicioSafe(){
   var a=document.activeElement, id=a&&a.id, s=null, e=null; try{ s=a.selectionStart; e=a.selectionEnd; }catch(_){}
-  var hsel=a&&a.getAttribute&&a.getAttribute("data-hsel");
+  var sel=null;
+  if(!id && a && a.getAttribute){ ["data-hsel","data-ciente","data-cientes","data-concluir","data-upd","data-hist"].some(function(at){ var v=a.getAttribute(at); if(v==null) return false;
+    sel=(a.closest&&a.closest("#histDet")?"#histDet ":(a.closest&&a.closest(".nitem")?".nitem ":""))+"["+at+'="'+v.replace(/"/g,'\\"')+'"]'; return true; }); }
   var hl=document.querySelector(".hist-list"), st=hl?hl.scrollTop:0;
   render();
   var hl2=document.querySelector(".hist-list"); if(hl2) hl2.scrollTop=st;
-  var n=id?document.getElementById(id):(hsel?document.querySelector('[data-hsel="'+hsel.replace(/"/g,'\\"')+'"]'):null);
+  var n=id?document.getElementById(id):(sel?document.querySelector(sel):null);
   if(n&&n!==document.activeElement){ try{ n.focus({preventScroll:true}); if(s!=null&&n.setSelectionRange) n.setSelectionRange(s,e); }catch(_){} }
 }
 function initMural(){
@@ -389,62 +400,143 @@ function initMural(){
       ? {persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:"pkce"}
       : {persistSession:false}});
     DB_READY=true;
-    dbCarregar().catch(function(e){ try{console.warn("Mural:",e&&e.message);}catch(_){} });
+    if(liberado()) dbCarregar().catch(function(e){ try{console.warn("Mural:",e&&e.message);}catch(_){} });
     /* tempo real: qualquer aviso novo ou removido atualiza o mural de todos */
-    try{ var rec=function(){ dbCarregar().catch(function(){}); };
+    try{ var rec=function(){ if(liberado()) dbCarregar().catch(function(){}); };
       DB.channel("mural").on("postgres_changes",{event:"*",schema:"public",table:dbTabela()},rec)
-        .on("postgres_changes",{event:"*",schema:"public",table:dbTabelaAt()},rec).subscribe(); }catch(e){}
+        .on("postgres_changes",{event:"*",schema:"public",table:dbTabelaAt()},rec)
+        .on("postgres_changes",{event:"*",schema:"public",table:dbTabelaCiente()},rec).subscribe(); }catch(e){}
     /* reserva: confere de novo a cada 2 minutos, caso a conexão em tempo real caia */
-    setInterval(function(){ if(!document.hidden) dbCarregar().catch(function(){}); }, 120000);
+    setInterval(function(){ if(!document.hidden && liberado()) dbCarregar().catch(function(){}); }, 120000);
   }catch(e){ DB_READY=false; try{console.warn("Mural: banco indisponível",e&&e.message);}catch(_){} }
 }
 /* ===== Login com o Google (Supabase Auth) =====
    Ligado por LOGIN_GOOGLE=true em banco.js. A conta Google identifica quem publica;
    só contas @preventsenior.com.br entram. Sem isso, o manual usa o e-mail digitado. */
 var AUTH_ON=false, AUTH_USER=null, DOMINIO="@preventsenior.com.br";
+/* Acesso restrito: com LOGIN_GOOGLE ligado, o manual só abre para quem está na lista
+   de acesso do banco (tabela acesso_manual). O banco confere de novo em cada leitura. */
+var ACESSO=null, ACESSO_SEQ=0;
+function travado(){ return loginGoogle(); }
+function liberado(){ return !travado() || !!ACESSO; }
+function dbTabelaAcesso(){ return (typeof SUPABASE_TABELA_ACESSO!=="undefined"&&SUPABASE_TABELA_ACESSO)?SUPABASE_TABELA_ACESSO:"acesso_manual"; }
+function contatoAdmin(){ return (typeof MURAL_ADMIN!=="undefined"&&MURAL_ADMIN)?MURAL_ADMIN:""; }
+function coverMsg(t,info){ var e=document.getElementById("coverEmailErr"); if(!e) return; e.textContent=t||""; e.classList.toggle("info",!!info); }
 function loginGoogle(){ return (typeof LOGIN_GOOGLE!=="undefined") && LOGIN_GOOGLE===true; }
 function authInit(){
   if(!DB_READY||!loginGoogle()||!DB.auth) return;
-  AUTH_ON=true; coverModo();
+  AUTH_ON=true; coverModo(); gsiCarregar();
   DB.auth.getSession().then(function(r){ authAplicar(r&&r.data&&r.data.session); }).catch(function(){ authAplicar(null); });
   DB.auth.onAuthStateChange(function(ev,session){ if(ev==="INITIAL_SESSION") return; authAplicar(session); });
 }
 function authAplicar(session){
   var u=session&&session.user, em=u?emailNorm(u.email||""):"";
-  var cov=document.getElementById("cover"), err=document.getElementById("coverEmailErr");
-  if(u && em.slice(-DOMINIO.length)!==DOMINIO){
-    DB.auth.signOut().catch(function(){}); AUTH_USER=null; setEmail("");
-    if(err) err.textContent="Entre com a sua conta Google da Prevent Senior ("+DOMINIO+").";
-    if(cov) cov.style.display="";
-  } else if(u){
-    var md=u.user_metadata||{}; AUTH_USER={email:em, nome:md.full_name||md.name||autorNome(em)};
-    setEmail(em); if(err) err.textContent=""; if(cov) cov.style.display="none";
-  } else { AUTH_USER=null; setEmail(""); }
-  coverModo(); updateEmailBadge(); render();
-  if(DB_READY) dbCarregar().catch(function(){});
+  var cov=document.getElementById("cover"), seq=++ACESSO_SEQ;
+  if(!u){ AUTH_USER=null; ACESSO=null; setEmail(""); window.NOTICIAS_LIVE=[]; ATUAL_LIVE=[]; CIENTES_LIVE=[]; EQUIPE=null;
+    if(cov&&travado()) cov.style.display="";
+    coverModo(); updateEmailBadge(); render(); return; }
+  if(ACESSO && ACESSO.email===em && AUTH_USER){ coverModo(); return; }   // mesma pessoa, já conferida
+  /* confere na lista de acesso do banco antes de abrir o manual */
+  ACESSO=null; AUTH_USER=null; coverMsg("Conferindo o acesso de "+em+"…",true); coverModo();
+  Promise.resolve(DB.from(dbTabelaAcesso()).select("email,nome,admin").eq("email",em).limit(1)).then(function(r){
+    if(seq!==ACESSO_SEQ) return;
+    if(r&&r.error) throw r.error;
+    var row=r&&r.data&&r.data[0];
+    if(!row){
+      ACESSO=null; AUTH_USER=null; setEmail("");
+      DB.auth.signOut().catch(function(){});
+      if(cov) cov.style.display="";
+      coverMsg("O e-mail "+em+" não tem acesso ao Manual Fiscal."+(contatoAdmin()?" Para pedir acesso, fale com "+contatoAdmin()+".":""));
+      coverModo(); updateEmailBadge(); render(); return;
+    }
+    var md=u.user_metadata||{};
+    ACESSO={email:em, nome:row.nome||"", admin:!!row.admin};
+    AUTH_USER={email:em, nome:md.full_name||md.name||row.nome||autorNome(em)};
+    setEmail(em); coverMsg(""); if(cov) cov.style.display="none";
+    coverModo(); updateEmailBadge(); render();
+    if(DB_READY) dbCarregar().catch(function(){});
+  }).catch(function(e){
+    if(seq!==ACESSO_SEQ) return;
+    ACESSO=null; AUTH_USER=null; if(cov) cov.style.display="";
+    coverMsg("Não foi possível conferir o seu acesso agora. Confira a internet e tente de novo."+(e&&e.message?" ("+e.message+")":""));
+    coverModo(); updateEmailBadge(); render();
+  });
 }
 function authEntrar(){
-  var err=document.getElementById("coverEmailErr"); if(err) err.textContent="";
+  var err=document.getElementById("coverEmailErr"); coverMsg("");
   var volta=location.href.split("#")[0].split("?")[0];
-  DB.auth.signInWithOAuth({provider:"google", options:{redirectTo:volta, queryParams:{prompt:"select_account", hd:DOMINIO.slice(1)}}})
+  DB.auth.signInWithOAuth({provider:"google", options:{redirectTo:volta, queryParams:{prompt:"select_account"}}})
     .then(function(r){ if(r&&r.error&&err) err.textContent="Não foi possível abrir o login do Google: "+r.error.message; })
     .catch(function(e){ if(err) err.textContent="Não foi possível abrir o login do Google."; });
 }
+/* login ligado, mas o Supabase não carregou (internet, bloqueio): o manual fica fechado */
+function travaSemLogin(){
+  ["coverEmailBox","coverGoogle","coverGsi","coverBtn","coverSkip","coverConta"].forEach(function(id){ var e=document.getElementById(id); if(e) e.hidden=true; });
+  var sub=document.querySelector(".cover-sub"); if(sub) sub.textContent="Acesso restrito à equipe do setor Fiscal.";
+  coverMsg("Não foi possível carregar o login. Confira a internet e recarregue a página.");
+  var nt=document.getElementById("coverNote"); if(nt) nt.textContent="";
+  var cov=document.getElementById("cover"); if(cov) cov.style.display="";
+}
 function authSair(){ if(!DB||!DB.auth) return; DB.auth.signOut().then(function(){ authAplicar(null); }).catch(function(){ authAplicar(null); }); }
+/* ===== Botão oficial do Google (Google Identity Services) =====
+   Com GOOGLE_CLIENT_ID em banco.js, o login abre direto no Google a partir do site:
+   a tela do Google mostra o endereço do manual, e não o do Supabase.
+   Sem ele (ou se o Google não carregar), vale o botão próprio (login pelo Supabase). */
+var GSI_OK=false, GSI_NONCE=null;
+function gsiClientId(){ var c=(typeof GOOGLE_CLIENT_ID!=="undefined")?String(GOOGLE_CLIENT_ID||"").trim():""; return /\.apps\.googleusercontent\.com$/.test(c)?c:""; }
+function gsiCarregar(){
+  if(!AUTH_ON||!gsiClientId()||window.__gsiLoad) return; window.__gsiLoad=true;
+  var sc=document.createElement("script"); sc.src="https://accounts.google.com/gsi/client"; sc.async=true; sc.onload=gsiPreparar;
+  document.head.appendChild(sc);
+}
+/* nonce: o Google recebe o hash; o Supabase recebe o original e confere que o login é deste pedido */
+function gsiNovoNonce(){
+  var a=new Uint8Array(32); crypto.getRandomValues(a); var raw=btoa(String.fromCharCode.apply(null,a));
+  return crypto.subtle.digest("SHA-256",new TextEncoder().encode(raw)).then(function(h){
+    return {raw:raw, hash:Array.prototype.map.call(new Uint8Array(h),function(b){ return ("0"+b.toString(16)).slice(-2); }).join("")}; });
+}
+function gsiPreparar(){
+  if(!(window.google&&google.accounts&&google.accounts.id)||!(window.crypto&&crypto.subtle)) return;
+  gsiNovoNonce().then(function(n){
+    GSI_NONCE=n;
+    google.accounts.id.initialize({client_id:gsiClientId(), nonce:n.hash, callback:gsiResposta, auto_select:false, ux_mode:"popup"});
+    GSI_OK=true; coverModo();
+  }).catch(function(){});
+}
+function gsiBotao(){
+  var box=document.getElementById("coverGsi"), g=document.getElementById("coverGoogle");
+  if(!box||!GSI_OK||AUTH_USER) return;
+  box.hidden=false; if(g) g.hidden=true;
+  var w=Math.round((box.parentNode&&box.parentNode.clientWidth)||320); w=Math.max(220,Math.min(400,w||320));
+  try{ google.accounts.id.renderButton(box,{type:"standard",theme:"outline",size:"large",text:"signin_with",shape:"rectangular",logo_alignment:"center",width:w,locale:"pt-BR"}); }
+  catch(e){ box.hidden=true; if(g) g.hidden=false; }
+}
+function gsiResposta(r){
+  var err=document.getElementById("coverEmailErr"); coverMsg("");
+  if(!r||!r.credential||!DB||!DB.auth) return;
+  DB.auth.signInWithIdToken({provider:"google", token:r.credential, nonce:GSI_NONCE&&GSI_NONCE.raw})
+    .then(function(x){
+      if(x&&x.error){ if(err) err.textContent="Não foi possível entrar: "+x.error.message; return; }
+      authAplicar(x&&x.data&&x.data.session);
+    })
+    .catch(function(){ if(err) err.textContent="Não foi possível entrar com o Google. Tente de novo."; })
+    .then(function(){ gsiPreparar(); });   // novo nonce para o próximo login
+}
 /* tela de entrada: mostra o botão do Google (ou a conta conectada) no lugar do campo de e-mail */
 function coverModo(){
   if(!AUTH_ON) return;
   function el(id){ return document.getElementById(id); }
   var box=el("coverEmailBox"), g=el("coverGoogle"), b=el("coverBtn"), sk=el("coverSkip"), ct=el("coverConta"), nt=el("coverNote"), sub=document.querySelector(".cover-sub");
   if(box) box.hidden=true;
-  if(sub) sub.textContent="Entre com a sua conta Google da Prevent Senior para publicar no mural, salvar anotações no calendário e montar a sua rotina.";
+  if(sub) sub.textContent="Acesso restrito à equipe do setor Fiscal. Entre com a sua conta Google corporativa.";
   if(AUTH_USER){
-    if(g) g.hidden=true; if(b){ b.hidden=false; b.textContent="Continuar"; } if(sk) sk.textContent="Sair da conta";
+    if(g) g.hidden=true; if(el("coverGsi")) el("coverGsi").hidden=true; if(b){ b.hidden=false; b.textContent="Continuar"; } if(sk){ sk.hidden=false; sk.textContent="Sair da conta"; }
     if(ct){ ct.hidden=false; ct.innerHTML='Conectado como<b>'+calEsc(AUTH_USER.nome)+'</b>'+calEsc(AUTH_USER.email); }
     if(nt) nt.textContent="Para entrar com outra conta, saia desta primeiro.";
   } else {
-    if(g) g.hidden=false; if(b) b.hidden=true; if(sk) sk.textContent="Continuar sem entrar"; if(ct) ct.hidden=true;
-    if(nt) nt.textContent="Sem entrar, o manual abre normalmente, só não publica no mural nem guarda anotações pessoais. Não pedimos senha: o Google confirma quem você é.";
+    if(GSI_OK) gsiBotao(); else if(g) g.hidden=false;
+    if(b) b.hidden=true; if(sk){ sk.hidden=true; sk.textContent="Sair da conta"; } if(ct) ct.hidden=true;
+    if(nt) nt.textContent="Só os e-mails autorizados entram. Não pedimos senha: o Google confirma quem você é."+(contatoAdmin()?" Para pedir acesso, fale com "+contatoAdmin()+".":"");
   }
 }
 function dbPublish(item){
@@ -474,7 +566,7 @@ function attrEsc(s){ return calEsc(s).replace(/"/g,"&quot;"); }
 function autorNome(em){ if(!em && AUTH_USER && AUTH_USER.nome) return AUTH_USER.nome; em=em||CUREMAIL; if(!em) return ""; return em.split("@")[0].split(/[._-]+/).filter(Boolean).map(function(p){ return p.charAt(0).toUpperCase()+p.slice(1); }).join(" "); }
 /* quem pode publicar: com o banco ligado, qualquer pessoa logada; sem ele, só o responsável (cópia manual) */
 function muralPodePublicar(){ if(AUTH_ON) return !!AUTH_USER; return !!CUREMAIL && (DB_READY || muralIsAdmin()); }
-function muralIsAdmin(){ return (typeof MURAL_ADMIN!=="undefined"&&MURAL_ADMIN)?(CUREMAIL===emailNorm(MURAL_ADMIN)):true; }
+function muralIsAdmin(){ if(AUTH_ON) return !!(ACESSO&&ACESSO.admin); return (typeof MURAL_ADMIN!=="undefined"&&MURAL_ADMIN)?(CUREMAIL===emailNorm(MURAL_ADMIN)):true; }
 var MESES_MIN=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 
 /* ===== Minha rotina: dia / semana / mês =====
@@ -638,6 +730,9 @@ function wireInicio(){
   ["histOpen","histOpen2"].forEach(function(id){ var h=document.getElementById(id); if(h) h.onclick=function(){ openHist(null); }; });
   document.querySelectorAll("[data-hist]").forEach(function(b){ b.onclick=function(){ openHist(b.getAttribute("data-hist")); }; });
   document.querySelectorAll("[data-upd]").forEach(function(b){ b.onclick=function(){ openCompose({upd:b.getAttribute("data-upd")}); }; });
+  document.querySelectorAll("[data-concluir]").forEach(function(b){ b.onclick=function(){ openCompose({upd:b.getAttribute("data-concluir"), concluir:true}); }; });
+  document.querySelectorAll("[data-ciente]").forEach(function(b){ b.onclick=function(){ cienteAlternar(b.getAttribute("data-ciente")); }; });
+  document.querySelectorAll(".nitem [data-cientes]").forEach(function(b){ b.onclick=function(){ var k=b.getAttribute("data-cientes"); cienteAberto[k]=!cienteAberto[k]; renderInicioSafe(); }; });
   wireHist();
   var gc=document.getElementById("go-cal"); if(gc)gc.onclick=function(){ switchTab("calendario"); };
   document.querySelectorAll("tr[data-calgo]").forEach(function(r){ r.onclick=function(){ goCalDay(r.getAttribute("data-calgo")); }; });
@@ -657,16 +752,61 @@ function podeRemover(email){ return DB_READY && !!CUREMAIL && (muralIsAdmin() ||
 function podeAtualizar(){ return DB_READY ? ATUAL_OK : muralPodePublicar(); }
 function nitemHtml(n,todayIso){
   var c=nCat(n), k=nKey(n), at=nAtualizacoes(n), s=nSit(n), u=at.length?at[at.length-1]:null;
-  var h='<article class="nitem"><div class="nmeta"><span class="stag '+c+'">'+NCAT[c].l+'</span>'+sitHtml(s)
-    +(n.data===todayIso?'<span class="nnew">Novo hoje</span>':(u&&u.data===todayIso?'<span class="nnew">Atualizado hoje</span>':''))
-    +'<time datetime="'+calEsc(n.data||'')+'">'+(n.data?brFull(n.data):'')+'</time>'
+  /* em aberto: só a bolinha na cor da categoria; em andamento e concluído seguem com o nome */
+  var sit=(s==="aberto")?'<span class="ndot '+c+'" role="img" aria-label="Em aberto" title="Em aberto"></span>':sitHtml(s);
+  var h='<article class="nitem"><div class="nmeta"><span class="stag '+c+'">'+NCAT[c].l+'</span>'+sit
+    +'<span class="nby"><span>'+(n.autor&&n.autor!=="-"?calEsc(n.autor)+', ':'')+'<time datetime="'+calEsc(n.data||'')+'">'+(n.data?brFull(n.data):'')+'</time></span></span>'
     +(n._id&&podeRemover(n.email)?'<button class="ndel" type="button" data-del="'+attrEsc(n._id)+'" title="Remover do mural" aria-label="Remover do mural">×</button>':'')
-    +'</div><h3 class="ntit">'+calEsc(n.titulo||'')+'</h3><p class="ntxt">'+nEsc(n.texto||'')+'</p>';
-  if(u) h+='<div class="nlast"><div class="nlast-h">Última atualização, '+brFull(u.data)+(u.autor&&u.autor!=="-"?', por '+calEsc(u.autor):'')+(NSIT[u.status]?': '+NSIT[u.status].toLowerCase():'')+'</div><p>'+nEsc(u.texto)+'</p></div>';
-  h+='<div class="nfoot">'+(n.autor&&n.autor!=="-"?'<span class="nauthor">Publicado por '+calEsc(n.autor)+'</span>':'')
-    +'<span class="nbtns"><button type="button" class="nbtn" data-hist="'+attrEsc(k)+'">'+ico("historico")+'Histórico'+(at.length?' ('+at.length+')':'')+'</button>'
+    +'</div><h3 class="ntit"><button type="button" class="ntit-link" data-hist="'+attrEsc(k)+'" title="Ver o histórico completo">'+calEsc(n.titulo||'')+'</button></h3><p class="ntxt">'+nEsc(n.texto||'')+'</p>';
+  if(u) h+='<div class="nlast"><div class="nlast-h">Última atualização, '+brFull(u.data)+(u.autor&&u.autor!=="-"?', por '+calEsc(u.autor):'')+(NSIT[u.status]?': '+NSIT[u.status].toLowerCase():'')+'</div>'+(u.texto!==TXT_CONCLUIDO?'<p>'+nEsc(u.texto)+'</p>':'')+'</div>';
+  h+='<div class="nfoot">'+cienteBarra(n)+'<span class="nbtns">'+concluirHtml(n,"nbtn")
     +(podeAtualizar()?'<button type="button" class="nbtn" data-upd="'+attrEsc(k)+'">'+ico("mais")+'Atualizar</button>':'')+'</span></div>';
+  if(cienteAberto[k]) h+=cientePainel(n);
   return h+'</article>';
+}
+/* ---- ciente ---- */
+function podeCiente(){ return DB_READY && CIENTE_OK && !!AUTH_USER; }
+function nCientes(n){ var id=String(n._id||""); return CIENTES_LIVE.filter(function(x){ return String(x.noticia_id)===id; }).sort(function(a,b){ return String(a.criado_em||"").localeCompare(String(b.criado_em||"")); }); }
+function nomeCurto(nome,email){ var t=String(nome||"").trim(); return t?t.split(/\s+/)[0]:(autorNome(email).split(" ")[0]||email); }
+function iniciais(nome,email){ var p=String(nome||autorNome(email)||"?").trim().split(/\s+/); return ((p[0]||"?").charAt(0)+(p.length>1?p[p.length-1].charAt(0):"")).toUpperCase(); }
+function cienteBarra(n){
+  if(!DB_READY||!CIENTE_OK||!n._id) return '<span></span>';
+  var L=nCientes(n), k=nKey(n), eu=AUTH_USER?AUTH_USER.email:"", euDei=L.some(function(x){ return x.email===eu; });
+  var nomes=L.map(function(x){ return x.email===eu?"Você":(x.nome||autorNome(x.email)); });
+  var av=L.slice(0,5).map(function(x){ return '<i title="'+attrEsc(x.nome||x.email)+'">'+calEsc(iniciais(x.nome,x.email))+'</i>'; }).join('')+(L.length>5?'<i class="mais">+'+(L.length-5)+'</i>':'');
+  var cont=L.length+(EQUIPE&&EQUIPE.length?' de '+EQUIPE.length:'');
+  var dica=L.length?'Deram ciente: '+nomes.join(", ")+'. Clique para ver a lista.':'Ninguém deu ciente ainda. Clique para ver quem falta.';
+  return '<span class="cbar">'
+    +(podeCiente()?'<button type="button" class="cbtn'+(euDei?' on':'')+'" data-ciente="'+attrEsc(k)+'" aria-pressed="'+euDei+'" title="'+(euDei?'Você deu ciente. Clique para desfazer.':'Marcar que você viu esta publicação')+'">'+ico("check")+'Ciente</button>':'')
+    +'<button type="button" class="cwho" data-cientes="'+attrEsc(k)+'" aria-expanded="'+(!!cienteAberto[k])+'" title="'+attrEsc(dica)+'" aria-label="'+attrEsc(cont+' deram ciente. '+dica)+'">'+(av?'<span class="cav">'+av+'</span>':'')+'<span class="cct">'+cont+'</span></button></span>';
+}
+function cientePainel(n){
+  var L=nCientes(n), ja={}; L.forEach(function(x){ ja[x.email]=1; });
+  var h='<div class="cpanel"><div><h4>Deram ciente ('+L.length+')</h4>';
+  h+=L.length?'<ul>'+L.map(function(x){ var t=isoLocal(x.criado_em); return '<li><span>'+calEsc(x.nome||autorNome(x.email))+'</span><time>'+(t.d?calBR(t.d)+' '+t.h:'')+'</time></li>'; }).join('')+'</ul>':'<p class="vazio">Ninguém ainda.</p>';
+  h+='</div>';
+  if(EQUIPE){ var autor=emailNorm(n.email||""), F=EQUIPE.filter(function(x){ var e=emailNorm(x.email); return !ja[e] && e!==autor; });
+    h+='<div class="falta"><h4>Ainda não deram ciente ('+F.length+')</h4>'+(F.length?'<ul>'+F.map(function(x){ return '<li><span>'+calEsc(x.nome||autorNome(x.email))+'</span></li>'; }).join('')+'</ul>':'<p class="vazio">Todo mundo já viu.</p>')+'</div>'; }
+  return h+'</div>';
+}
+function cienteAlternar(k){
+  var n=nPorKey(k); if(!n||!podeCiente()) return;
+  var em=AUTH_USER.email, id=Number(n._id), tem=nCientes(n).some(function(x){ return x.email===em; });
+  if(tem) CIENTES_LIVE=CIENTES_LIVE.filter(function(x){ return !(String(x.noticia_id)===String(n._id)&&x.email===em); });
+  else CIENTES_LIVE.push({noticia_id:id, email:em, nome:(AUTH_USER.nome||"").slice(0,80), criado_em:new Date().toISOString()});
+  renderInicioSafe();
+  var q=tem?DB.from(dbTabelaCiente()).delete().eq("noticia_id",id).eq("email",em)
+           :DB.from(dbTabelaCiente()).insert({noticia_id:id, email:em, nome:(AUTH_USER.nome||"").slice(0,80)});
+  Promise.resolve(q).then(function(r){ if(r&&r.error) throw r.error; return dbCarregar(); })
+    .catch(function(e){ muralFlash={ok:false,t:"Não foi possível registrar o ciente"+(e&&e.message?": "+e.message:"")+"."}; dbCarregar().catch(function(){ renderInicioSafe(); }); });
+}
+/* ---- concluir ---- */
+function nConclusao(n){ var at=nAtualizacoes(n); for(var i=at.length-1;i>=0;i--){ if(at[i].status==="resolvido") return at[i]; if(NSIT[at[i].status]) return null; } return null; }
+function concluirHtml(n,cls){
+  var k=nKey(n);
+  if(nSit(n)==="resolvido"){ var u=nConclusao(n);
+    return '<span class="nconcl">'+ico("check")+'Concluído'+(u&&u.autor&&u.autor!=="-"?' por '+calEsc(nomeCurto(u.autor,u.email))+(u.data?' em '+calBR(u.data):''):'')+'</span>'; }
+  return podeAtualizar()?'<button type="button" class="'+cls+' concl" data-concluir="'+attrEsc(k)+'">'+ico("check")+'Concluir</button>':'';
 }
 
 /* ===== Histórico do mural: tudo o que já foi publicado, com as atualizações de cada item ===== */
@@ -698,27 +838,28 @@ function histLista(L){
 }
 function histDetalhe(n){
   if(!n) return '<div class="hd-empty">'+ico("historico")+'<p>Escolha um item da lista para ver tudo o que aconteceu com ele, do começo até hoje.</p></div>';
-  var c=nCat(n), s=nSit(n), at=nAtualizacoes(n), k=nKey(n), ult=nUltimaData(n), q=quandoTxt(ult);
+  var c=nCat(n), s=nSit(n), at=nAtualizacoes(n), k=nKey(n), ult=nUltimaData(n), q=quandoTxt(ult), ini=(c==='aviso')?'':nSitInicial(n);
   var aut=function(a){ return a&&a!=="-"?' por '+calEsc(a):''; };
   var h='<button type="button" class="linkbtn hd-back" id="histVoltaLista">Voltar à lista</button>';
   h+='<div class="hd-top"><span class="stag '+c+'">'+NCAT[c].l+'</span>'+sitHtml(s)+'</div>';
   h+='<h3 class="hd-tit">'+calEsc(n.titulo||'')+'</h3>';
-  h+='<p class="hd-meta">'+(s?'Aberto':'Publicado')+' em '+(n.data?brFull(n.data):'-')+aut(n.autor)+'. '
+  h+='<p class="hd-meta">'+(ini?'Aberto':'Publicado')+' em '+(n.data?brFull(n.data):'-')+aut(n.autor)+'. '
     +(at.length?'Última atualização em '+brFull(ult)+(q?' ('+q+')':'')+'.':'Ainda sem atualizações.')+'</p>';
   // linha do tempo
   var hi=n.criado_em?isoLocal(n.criado_em).h:"";
-  h+='<ol class="tl"><li class="tl-i '+(s?'s-'+nSitInicial(n):'s-pub')+'"><div class="tl-when"><b>'+(n.data?brFull(n.data):'')+'</b>'+hi+'</div>'
-    +'<div class="tl-body"><div class="tl-h"><span class="tl-dm">'+(n.data?brFull(n.data):'')+'</span>'+(s?'Aberto':'Publicado')+aut(n.autor)+'</div><p>'+nEsc(n.texto||'')+'</p></div></li>';
-  var ant=s?nSitInicial(n):"";
+  h+='<ol class="tl"><li class="tl-i '+(ini?'s-'+ini:'s-pub')+'"><div class="tl-when"><b>'+(n.data?brFull(n.data):'')+'</b>'+hi+'</div>'
+    +'<div class="tl-body"><div class="tl-h"><span class="tl-dm">'+(n.data?brFull(n.data):'')+'</span>'+(ini?'Aberto':'Publicado')+aut(n.autor)+'</div><p>'+nEsc(n.texto||'')+'</p></div></li>';
+  var ant=ini;
   at.forEach(function(u){
     var ok=!!NSIT[u.status], mud=ok&&u.status!==ant; if(ok) ant=u.status;
     h+='<li class="tl-i s-'+(ok?u.status:'nota')+'"><div class="tl-when"><b>'+brFull(u.data)+'</b>'+(u.hora||'')+'</div>'
       +'<div class="tl-body"><div class="tl-h"><span class="tl-dm">'+brFull(u.data)+'</span>'+(mud?'Mudou para '+sitHtml(u.status):'Atualização')+aut(u.autor)
       +(u._id&&podeRemover(u.email)?'<button type="button" class="ndel" data-delat="'+attrEsc(u._id)+'" title="Remover esta atualização" aria-label="Remover esta atualização">×</button>':'')
-      +'</div><p>'+nEsc(u.texto)+'</p></div></li>';
+      +'</div>'+(u.texto!==TXT_CONCLUIDO?'<p>'+nEsc(u.texto)+'</p>':'')+'</div></li>';
   });
   h+='</ol>';
-  h+='<div class="hd-act">'+(podeAtualizar()?'<button type="button" class="cta" data-upd="'+attrEsc(k)+'">'+ico("mais")+'Adicionar atualização</button>':'')
+  if(DB_READY&&CIENTE_OK&&n._id) h+='<div class="hd-ciente"><div class="hd-ciente-h">'+cienteBarra(n)+'</div>'+cientePainel(n)+'</div>';
+  h+='<div class="hd-act">'+concluirHtml(n,"cta secondary")+(podeAtualizar()?'<button type="button" class="cta" data-upd="'+attrEsc(k)+'">'+ico("mais")+'Adicionar atualização</button>':'')
     +'<button type="button" class="cta secondary" id="histMail">'+ico("email")+'Enviar resumo por e-mail</button>'
     +(n._id&&podeRemover(n.email)?'<button type="button" class="linkbtn hd-del" data-del="'+attrEsc(n._id)+'">Remover publicação</button>':'')+'</div>';
   return h;
@@ -758,7 +899,7 @@ function openHist(k){
 function histMail(n){
   if(!n) return;
   var at=nAtualizacoes(n), s=nSit(n), c=NCAT[nCat(n)].l;
-  var L=[c+(s?" ("+NSIT[s].toLowerCase()+")":"")+": "+n.titulo, "", (n.data?brFull(n.data):"")+" | "+(s?"Aberto":"Publicado")+(n.autor&&n.autor!=="-"?" por "+n.autor:""), n.texto||""];
+  var L=[c+(s?" ("+NSIT[s].toLowerCase()+")":"")+": "+n.titulo, "", (n.data?brFull(n.data):"")+" | "+(c!=="Aviso"?"Aberto":"Publicado")+(n.autor&&n.autor!=="-"?" por "+n.autor:""), n.texto||""];
   at.forEach(function(u){ L.push("", brFull(u.data)+(u.hora?" "+u.hora:"")+" | "+(NSIT[u.status]?NSIT[u.status]:"Atualização")+(u.autor&&u.autor!=="-"?" por "+u.autor:""), u.texto); });
   gmailAbrir("Mural do Fiscal — Histórico: "+n.titulo, L.join("\n")+"\n\n—\nResumo do histórico no Mural do Fiscal."+((typeof MURAL_LINK!=="undefined"&&MURAL_LINK)?("\nAbrir o manual: "+MURAL_LINK):""));
 }
@@ -835,8 +976,14 @@ function composeForm(){
 }
 /* atualização de um item: o que mudou e, para pendências e tratativas, a situação agora */
 function composeFormUpd(n,x){
-  var pub=muralPodePublicar(), s=nSit(n), k=nKey(n);
-  var d=(updDraft&&updDraft.k===k)?updDraft:{sit:s,txt:""};
+  var pub=muralPodePublicar(), s=nSit(n), k=nKey(n), cc=!!(composeMode&&composeMode.concluir), dk=k+(cc?"#c":"");
+  var d=(updDraft&&updDraft.k===dk)?updDraft:{sit:s,txt:""};
+  if(cc) return '<div class="mdl-h"><div><h2 id="mdlTitle">Concluir</h2><p>Marca '+(nCat(n)==="aviso"?'este aviso como concluído':'esta '+(nCat(n)==="pendencia"?'pendência':'tratativa')+' como concluída')+' para todo o setor. Fica no histórico com o seu nome.</p></div>'+x+'</div>'
+    +'<div class="mdl-b"><div class="upd-ref"><span class="stag '+nCat(n)+'">'+NCAT[nCat(n)].l+'</span>'+sitHtml(s)+'<b>'+calEsc(n.titulo||'')+'</b></div>'
+    +'<label class="flabel" for="ncTxt">Como foi resolvido <span class="opc">(opcional)</span></label><textarea id="ncTxt" class="field" rows="3" maxlength="1500" placeholder="Ex.: Nota lançada no dia 15. Fornecedor avisado.">'+calEsc(d.txt)+'</textarea>'
+    +'<p class="mdl-who">Concluído por <b>'+calEsc(autorNome())+'</b> <span>('+calEsc(CUREMAIL)+')</span></p></div>'
+    +'<div class="mdl-f"><span id="ncMsg" class="ncmsg" role="status"></span>'
+    +(pub?'<button type="button" class="cta secondary" id="mdlDone">Cancelar</button><button type="button" class="cta green" id="ncCopy">'+ico("check")+'Concluir</button>':'<button type="button" class="cta secondary" id="mdlDone">Fechar</button>')+'</div>';
   var hint = DB_READY ? 'Registre o que mudou. A atualização entra no histórico deste item e aparece no mural para todo o setor.'
     : (pub ? 'Publicar copia a atualização: cole dentro de <code>atualizacoes:[ ]</code> deste item em <code>noticias.js</code> e publique o site.'
            : 'O mural ainda não está ligado ao banco de dados. Por enquanto, avise o setor por e-mail.');
@@ -855,8 +1002,8 @@ function composeFormUpd(n,x){
 }
 function composeOkUpd(u){
   var n=u._ref;
-  return '<div class="mdl-h"><div><h2 id="mdlTitle">Atualização publicada</h2><p>Já está no histórico do item e no mural.</p></div><button type="button" class="mdl-x" id="mdlClose" aria-label="Fechar">×</button></div>'
-    +'<div class="mdl-b"><div class="mdl-ok"><span class="stag '+nCat(n)+'">'+NCAT[nCat(n)].l+'</span> '+sitHtml(nSit(n))+'<h3>'+calEsc(n.titulo||'')+'</h3><p>'+nEsc(u.texto)+'</p></div></div>'
+  return '<div class="mdl-h"><div><h2 id="mdlTitle">'+(u._concluir?'Concluído':'Atualização publicada')+'</h2><p>'+(u._concluir?'Marcado como concluído para todo o setor. Sai do mural em 7 dias e fica no histórico.':'Já está no histórico do item e no mural.')+'</p></div><button type="button" class="mdl-x" id="mdlClose" aria-label="Fechar">×</button></div>'
+    +'<div class="mdl-b"><div class="mdl-ok"><span class="stag '+nCat(n)+'">'+NCAT[nCat(n)].l+'</span> '+sitHtml(nSit(n))+'<h3>'+calEsc(n.titulo||'')+'</h3>'+(u.texto!==TXT_CONCLUIDO?'<p>'+nEsc(u.texto)+'</p>':'')+'</div></div>'
     +'<div class="mdl-f"><span id="ncMsg" class="ncmsg" role="status" style="color:var(--ink-2);font-weight:500">Quer avisar também por e-mail?</span>'
     +'<button type="button" class="cta secondary" id="ncVerHist">'+ico("historico")+'Ver histórico</button>'
     +'<button type="button" class="cta secondary" id="ncMail">'+ico("email")+'Enviar por e-mail</button><button type="button" class="cta" id="mdlDone">Concluir</button></div>';
@@ -880,8 +1027,8 @@ function composeMail(item){
   var por=(item.autor&&item.autor!=="-"?("\nEnviado por: "+item.autor+(item.email?" ("+item.email+")":"")):"");
   if(item._ref){
     var n=item._ref, sitL=NSIT[item.status]?NSIT[item.status]:"";
-    gmailAbrir("Mural do Fiscal — Atualização: "+n.titulo,
-      (sitL?"Situação: "+sitL+"\n\n":"")+item.texto
+    gmailAbrir("Mural do Fiscal — "+(item._concluir?"Concluído":"Atualização")+": "+n.titulo,
+      (sitL?"Situação: "+sitL+"\n\n":"")+(item.texto!==TXT_CONCLUIDO?item.texto:"Marcado como concluído.")
       +"\n\n—\nReferente a: "+NCAT[nCat(n)].l+(n.data?" de "+brFull(n.data):"")+", "+n.titulo
       +"\nAtualização publicada no Mural do Fiscal."+link+por);
   } else {
@@ -894,9 +1041,9 @@ function composeItem(){
   var ref=composeRef();
   if(ref){
     var tx=String((document.getElementById("ncTxt")||{}).value||"").trim(), sr=document.querySelector('#compose input[name="ncSit"]:checked');
-    if(!tx){ composeMsg("Escreva o que mudou.",true); var te=document.getElementById("ncTxt"); if(te) te.focus(); return null; }
-    var hj=new Date();
-    return {_ref:ref, noticia_id:ref._id||"", data:calIso(hj.getFullYear(),hj.getMonth(),hj.getDate()), texto:tx, status:(nSit(ref)&&sr)?sr.value:null, autor:autorNome()||"-", email:CUREMAIL};
+    var hj=new Date(), cc=!!composeMode.concluir;
+    if(!tx && !cc){ composeMsg("Escreva o que mudou.",true); var te=document.getElementById("ncTxt"); if(te) te.focus(); return null; }
+    return {_ref:ref, _concluir:cc, noticia_id:ref._id||"", data:calIso(hj.getFullYear(),hj.getMonth(),hj.getDate()), texto:tx||TXT_CONCLUIDO, status:cc?"resolvido":((nSit(ref)&&sr)?sr.value:null), autor:autorNome()||"-", email:CUREMAIL};
   }
   var v=composeVals();
   if(!v.tit||!v.txt){ composeMsg("Preencha o título e o recado.",true); var e=document.getElementById(v.tit?"ncTxt":"ncTit"); if(e) e.focus(); return null; }
@@ -943,8 +1090,8 @@ function composeWire(){
 }
 function openCompose(opt){
   var el=composeEnsure(); composeLast=null;
-  composeMode=(opt&&opt.upd&&nPorKey(opt.upd))?{upd:opt.upd}:null;
-  var a=document.activeElement; composeOpener=(a&&a!==document.body)?{id:a.id||"", upd:a.getAttribute&&a.getAttribute("data-upd"), inDet:!!(a.closest&&a.closest("#histDet"))}:null;
+  composeMode=(opt&&opt.upd&&nPorKey(opt.upd))?{upd:opt.upd, concluir:!!opt.concluir}:null;
+  var a=document.activeElement; composeOpener=(a&&a!==document.body)?{id:a.id||"", upd:a.getAttribute&&(a.getAttribute("data-upd")||a.getAttribute("data-concluir")), attr:(a.getAttribute&&a.getAttribute("data-concluir")!=null)?"data-concluir":"data-upd", inDet:!!(a.closest&&a.closest("#histDet"))}:null;
   document.getElementById("mdlBody").innerHTML=composeForm(); composeWire();
   el.hidden=false; inicioCompose=true; document.documentElement.classList.add("mdl-open");
   setTimeout(function(){ var t=composeMode?document.getElementById("ncTxt"):document.getElementById(composeDraft&&composeDraft.tit?"ncTxt":"ncTit"); t=t||document.getElementById("mdlLogin"); if(t) t.focus(); },10);
@@ -953,13 +1100,13 @@ function closeCompose(){
   var el=document.getElementById("compose"); if(!el||el.hidden) return;
   if(!composeLast && composeMode && document.getElementById("ncTxt")){
     var tx=String(document.getElementById("ncTxt").value||"").trim(), sr=document.querySelector('#compose input[name="ncSit"]:checked');
-    updDraft=tx?{k:composeMode.upd, txt:tx, sit:sr?sr.value:""}:null;
+    updDraft=tx?{k:composeMode.upd+(composeMode.concluir?"#c":""), txt:tx, sit:sr?sr.value:""}:null;
   } else if(!composeLast && document.getElementById("ncTit")){ var v=composeVals(); composeDraft=(v.tit||v.txt)?v:null; }
   el.hidden=true; inicioCompose=false; composeLast=null; composeMode=null; document.documentElement.classList.remove("mdl-open");
   /* devolve o foco para quem abriu a janela */
   var o=composeOpener, t=null; composeOpener=null;
   if(o){ if(o.id) t=document.getElementById(o.id);
-    if(!t&&o.upd){ var esc=o.upd.replace(/"/g,'\\"'); t=document.querySelector((o.inDet?'#histDet ':'.nitem ')+'[data-upd="'+esc+'"]')||document.querySelector('[data-upd="'+esc+'"]'); } }
+    if(!t&&o.upd){ var esc=o.upd.replace(/"/g,'\\"'); t=document.querySelector((o.inDet?'#histDet ':'.nitem ')+'['+(o.attr||'data-upd')+'="'+esc+'"]')||document.querySelector('[data-upd="'+esc+'"]'); } }
   t=t||document.getElementById("ncToggle"); if(t) t.focus({preventScroll:true});
 }
 function fallbackCopy(t){ try{ var ta=document.createElement("textarea"); ta.value=t; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); }catch(e){} }
@@ -1070,6 +1217,7 @@ document.addEventListener("keydown",function(e){
   if(k==="/"&&!PAL.open){ var t=e.target, tg=t&&t.tagName; if(tg==="INPUT"||tg==="TEXTAREA"||tg==="SELECT"||(t&&t.isContentEditable)) return; e.preventDefault(); openPalette(); }
 },true);
 function render(){
+  if(!liberado()){ root.innerHTML=""; return; }
   if(view==="present"){root.innerHTML=presentHtml();wirePresent();return;}
   if(tab==="inicio"){root.innerHTML=inicioHtml();wireInicio();return;}
   if(tab==="processos"){root.innerHTML=procfiscHtml();wireProcfisc();return;}
@@ -1758,67 +1906,51 @@ var VF_CSS=".vf-fo{box-sizing:border-box;width:100%;height:100%;font-family:'IBM
   +".vf-c{font-size:11.5px;fill:#5F6B7A}"
   +".vf .pl:focus{outline:none}.vf .pl:focus-visible circle{stroke-width:3}";
 function vfNames(){ var o={}; VF_ROWS.forEach(function(r){ o[r.k]=(typeof PROCFISC!=="undefined"&&PROCFISC[r.k]&&PROCFISC[r.k].name)||r.k; }); return o; }
+/* ===== Visão geral: as etapas emendadas num único fluxo, da esquerda para a direita,
+   desenhadas pelo mesmo motor de cada processo (mesmas caixas, linhas e "+"). ===== */
+var VF_POS={};
 function vfAllKeys(){
   var ks=["rec_ativa","rec_passiva","bus_ct","bus_em","bus_pt","bus_dr","rec_falha"];
-  VF_ROWS.forEach(function(r){ var sp=PROCMAP[r.k]; if(!sp) return;
+  VF_ROWS.forEach(function(r){ var sp=PROCMAP[r.k]; if(!sp||r.apoio) return;
     sp.main.forEach(function(n){ if(n.plus) ks.push(n.plus); (n.branches||[]).forEach(function(b){ if(b.plus) ks.push(b.plus); }); }); });
   return ks;
 }
-function visaoFlowCore(names){
-  var BAND=62, PADT=26, PADB=26, DX=52, W=820, segs=[];
-  VF_ROWS.forEach(function(r){
+function visaoLinhaCore(){
+  var HEAD=56, GAP=64, PAD=24, segs=[], CYL=0;
+  VF_ROWS.forEach(function(r){ if(r.apoio) return;
     var g=(r.k==="recebimento") ? recMapCore({overview:true}) : buildProcCore(PROCMAP[r.k],{dropNext:true});
-    var exitRight = r.apoio ? 0 : (r.k==="recebimento" ? g.exitX+26 : g.exitX+66);
-    W=Math.max(W, DX+g.w+44, DX+exitRight+44);
-    segs.push(g);
+    segs.push({r:r, g:g}); CYL=Math.max(CYL, g.cy); });
+  var x=PAD-20, b='', H=0, pos={}, CY=HEAD+CYL;
+  segs.forEach(function(sg,i){
+    var g=sg.g, r=sg.r, dy=CY-g.cy, x0=x;
+    /* título da etapa, discreto, acima do trecho */
+    b+='<text x="'+(x0+20)+'" y="'+(PAD+10)+'" fill="#185FA5" font-size="13" font-weight="700" font-family="inherit">'+r.n+'. '+VF_SHORT[r.k]+'</text>'
+      +'<text x="'+(x0+20)+'" y="'+(PAD+28)+'" fill="#7B8696" font-size="12" font-family="inherit">'+r.s+' <tspan data-gopf="'+r.k+'" fill="#1A4FA3" font-weight="600" style="cursor:pointer">Abrir o processo ↗</tspan></text>';
+    if(i) b+='<line x1="'+(x0-GAP/2+10)+'" y1="'+PAD+'" x2="'+(x0-GAP/2+10)+'" y2="'+(PAD+34)+'" stroke="#E1E6ED" stroke-width="1"/>';
+    b+='<g transform="translate('+x0+','+dy+')">'+g.s+'</g>';
+    pos[r.k]=x0;
+    H=Math.max(H, dy+g.h);
+    var ex=x0+g.exitX;
+    if(i<segs.length-1){
+      if(r.k==="recebimento") x=ex-20;                 /* o Recebimento já termina com a seta: a etapa seguinte começa na ponta dela */
+      else { var nx=ex+GAP; b+=ln(ex, CY, nx+20, CY); x=nx; } }
+    else { b+=ln(ex, CY, ex+40, CY)+'<circle cx="'+(ex+54)+'" cy="'+CY+'" r="12" fill="#FFFFFF" stroke="#172235" stroke-width="3.5"/><text x="'+(ex+54)+'" y="'+(CY+31)+'" text-anchor="middle" fill="#5F6B7A" font-size="12" font-family="inherit">Fim</text>'; x=ex+90; }
   });
-  function dot(cx,cy,n){ return '<circle cx="'+cx+'" cy="'+cy+'" r="13" fill="#185FA5"/><text x="'+cx+'" y="'+(cy+0.5)+'" text-anchor="middle" dominant-baseline="central" fill="#fff" font-size="13" font-weight="700">'+n+'</text>'; }
-  var y=0, b='', pos=[];
-  segs.forEach(function(g,i){
-    var r=VF_ROWS[i], top=y, dy=top+BAND+PADT-g.top, sy=dy+g.cy;
-    pos.push({k:r.k, top:top});
-    /* faixa com o nome da etapa */
-    b+='<rect x="0" y="'+top+'" width="'+W+'" height="'+BAND+'" fill="#F6F8FA"/>';
-    if(i) b+='<line x1="0" y1="'+top+'" x2="'+W+'" y2="'+top+'" stroke="#D3DAE3"/>';
-    b+='<line x1="0" y1="'+(top+BAND)+'" x2="'+W+'" y2="'+(top+BAND)+'" stroke="#E6EAF0"/>';
-    b+='<foreignObject x="0" y="'+top+'" width="'+W+'" height="'+BAND+'"><div xmlns="http://www.w3.org/1999/xhtml" class="vf-fo vf-band">'
-      +(r.apoio?'<span class="vf-tag">Apoio</span>':'<span class="vf-n">'+r.n+'</span>')
-      +'<div class="vf-tt"><b>'+names[r.k]+'</b><span>'+r.s+'</span></div>'
-      +'<span class="vf-lk" data-gopf="'+r.k+'" role="link" tabindex="0">Abrir este processo ↗</span></div></foreignObject>';
-    /* a etapa, desenhada pelo mesmo motor do processo */
-    b+='<g transform="translate('+DX+','+dy+')">'+g.s+'</g>';
-    if(!r.apoio){
-      /* entrada: início do fluxo ou conector vindo da etapa anterior */
-      if(r.n===1) b+='<circle cx="30" cy="'+sy+'" r="12" fill="#FFFFFF" stroke="#2E7D46" stroke-width="2.2"/><text class="vf-c" x="30" y="'+(sy+30)+'" text-anchor="middle">Início</text>';
-      else b+=dot(30,sy,r.n);
-      b+=ln(43, sy, DX+20-1, sy);
-      /* saída: conector para a próxima etapa, ou fim do fluxo */
-      var ex=DX+g.exitX;
-      if(r.k==="recebimento"){ b+=dot(ex+13,sy,r.n+1)+'<text class="vf-c" x="'+(ex+13)+'" y="'+(sy+31)+'" text-anchor="middle">segue na etapa '+(r.n+1)+'</text>'; }
-      else if(r.n<7){ b+=ln(ex, sy, ex+39, sy)+dot(ex+53,sy,r.n+1)+'<text class="vf-c" x="'+(ex+53)+'" y="'+(sy+31)+'" text-anchor="middle">segue na etapa '+(r.n+1)+'</text>'; }
-      else { b+=ln(ex, sy, ex+40, sy)+'<circle cx="'+(ex+53)+'" cy="'+sy+'" r="12" fill="#FFFFFF" stroke="#172235" stroke-width="3.5"/><text class="vf-c" x="'+(ex+53)+'" y="'+(sy+31)+'" text-anchor="middle">Fim</text>'; }
-    }
-    y=dy+(g.hc||g.h)+PADB;
-  });
-  VF_POS=pos;
-  var H=Math.ceil(y);
-  return '<svg class="vf" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Fluxo completo do processo fiscal" style="display:block">'
-    +'<style>'+VF_CSS+'</style>'+ARROW
-    +'<defs><clipPath id="vfClip"><rect x="0" y="0" width="'+W+'" height="'+H+'" rx="12"/></clipPath></defs>'
-    +'<rect x="0" y="0" width="'+W+'" height="'+H+'" rx="12" fill="#FFFFFF"/>'
-    +'<g clip-path="url(#vfClip)">'+b+'</g>'
-    +'<rect x="0.5" y="0.5" width="'+(W-1)+'" height="'+(H-1)+'" rx="12" fill="none" stroke="#D3DAE3"/>'
-    +'</svg>';
+  var W=Math.ceil(x+PAD); H=Math.ceil(H+PAD);
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" xmlns="http://www.w3.org/2000/svg" role="group" aria-label="Visão geral do processo fiscal" style="display:block">'+ARROW
+    +'<rect x="0.5" y="0.5" width="'+(W-1)+'" height="'+(H-1)+'" rx="12" fill="#FFFFFF" stroke="#D3DAE3"/>'+b+'</svg>';
+  return {svg:svg, W:W, H:H, pos:pos};
 }
-function visaoMapSvg(){ return visaoFlowCore(vfNames()); }
-/* enquadra: largura do fluxo na área do mapa (sem ficar pequeno demais para ler) */
+function visaoMapSvg(){ var r=visaoLinhaCore(); VF_POS=r.pos; return r.svg; }
+/* enquadra: tamanho legível, começo do fluxo à vista; o resto se arrasta ou pelos botões das etapas */
 function visaoFit(){
   var w=document.getElementById("pcmap"), sv=document.querySelector("#pcmap-inner svg"); if(!w||!sv) return;
-  var r=w.getBoundingClientRect(), W=+sv.getAttribute("width")||1200;
-  pzS={k:Math.max(.6,Math.min(1,(r.width-24)/W)), tx:12, ty:10};
+  var r=w.getBoundingClientRect(), H=+sv.getAttribute("height")||400;
+  var k=.8; pzS={k:k, tx:12, ty:(H*k>r.height-24)?10:Math.round((r.height-H*k)/2)};
 }
-/* leva o mapa até a etapa escolhida (mantém o zoom atual) */
-function vfGo(i){ var p=VF_POS[i]; if(!p) return; pzS.tx=12; pzS.ty=10-p.top*pzS.k; pzApply(); }
+/* leva o mapa até a etapa escolhida (mantém o zoom) */
+function vfGo(i){ var row=VF_ROWS[i]; if(!row) return; if(row.apoio){ openPF(row.k); return; }
+  var x=VF_POS[row.k]; if(x==null) return; pzS.tx=Math.round(12-x*pzS.k); pzApply(); }
 function vfNavHtml(){
   var h='<div class="vf-nav" role="toolbar" aria-label="Ir para a etapa">';
   VF_ROWS.forEach(function(r,i){ h+='<button type="button" class="ncchip" data-vfgo="'+i+'">'+(r.apoio?'Apoio: chamados':(r.n+'. '+VF_SHORT[r.k]))+'</button>'; });
@@ -1833,16 +1965,16 @@ window.openPF=function(k){ tab="processos"; view="hub"; curPF=k; pzS={k:1,tx:0,t
 /* copia as fontes já carregadas (fontes.css) para a aba nova, sem baixar nada */
 function fontCss(){ var out=""; try{ for(var i=0;i<document.styleSheets.length;i++){ var sh=document.styleSheets[i]; if(!sh.href||!/fontes\.css/.test(sh.href)) continue; var rs=sh.cssRules; for(var j=0;j<rs.length;j++) out+=rs[j].cssText+"\n"; } }catch(e){} return out; }
 function openVisaoFull(){
-  var fns=[bx,ln,elb,conv,elbBack,recLbl,di_plus,pmBW,pmBH,pmExpW,buildProcCore,recMapCore,visaoFlowCore,vfAllKeys];
+  var fns=[bx,ln,elb,conv,elbBack,recLbl,di_plus,pmBW,pmBH,pmExpW,buildProcCore,recMapCore,visaoLinhaCore,vfAllKeys];
   var src=fns.map(function(f){ return f.toString(); }).join("\n");
   var nav=VF_ROWS.map(function(r,i){ return '<button type="button" class="chip" data-vfgo="'+i+'">'+(r.apoio?'Apoio: chamados':(r.n+'. '+VF_SHORT[r.k]))+'</button>'; }).join('');
   var js="var C="+JSON.stringify(C)+";var ARROW="+JSON.stringify(ARROW)+";var PM="+JSON.stringify(PM)+";var PROCMAP="+JSON.stringify(PROCMAP)
-    +";var VF_ROWS="+JSON.stringify(VF_ROWS)+";var VF_CSS="+JSON.stringify(VF_CSS)+";var VF_POS=[];var NAMES="+JSON.stringify(vfNames())+";var recOpen="+JSON.stringify(recOpen)+";\n"
+    +";var VF_ROWS="+JSON.stringify(VF_ROWS)+";var VF_SHORT="+JSON.stringify(VF_SHORT)+";var POS={};var recOpen="+JSON.stringify(recOpen)+";\n"
     +src+"\n"
     +"(function(){var st=document.getElementById('stage'),m=document.getElementById('map'),z={k:1,x:0,y:0},dg=null,moved=false,pin=null;"
-    +"function draw(){m.innerHTML=visaoFlowCore(NAMES);}"
+    +"function draw(){var r=visaoLinhaCore();m.innerHTML=r.svg;POS=r.pos;}"
     +"function ap(){m.style.transform='translate('+z.x+'px,'+z.y+'px) scale('+z.k+')';}"
-    +"function fit(){var r=st.getBoundingClientRect(),sv=m.querySelector('svg'),W=sv?+sv.getAttribute('width'):1400;z={k:Math.max(.6,Math.min(1,(r.width-48)/W)),x:24,y:16};ap();}"
+    +"function fit(){var r=st.getBoundingClientRect(),sv=m.querySelector('svg'),H=sv?+sv.getAttribute('height'):400;var k=.85;z={k:k,x:24,y:(H*k>r.height-32)?16:Math.round((r.height-H*k)/2)};ap();}"
     +"function zoomAt(px,py,f){var nk=Math.min(3,Math.max(.25,z.k*f));z.x=px-(px-z.x)*(nk/z.k);z.y=py-(py-z.y)*(nk/z.k);z.k=nk;ap();}"
     +"window.recToggle=function(k){recOpen[k]=!recOpen[k];draw();};"
     +"window.goConcCls=function(){var o=window.opener;if(o&&!o.closed){try{o.goFlux('classificacao');o.focus();}catch(e){}}};"
@@ -1856,7 +1988,7 @@ function openVisaoFull(){
     +"st.addEventListener('touchmove',function(e){if(pin&&e.touches.length===2){e.preventDefault();var d=td(e.touches);if(pin.d>0)zoomAt(pin.x,pin.y,d/pin.d);pin.d=d;return;}if(!dg||e.touches.length!==1)return;e.preventDefault();if(Math.abs(e.touches[0].clientX-dg.sx)+Math.abs(e.touches[0].clientY-dg.sy)>6)moved=true;z.x=e.touches[0].clientX-dg.x;z.y=e.touches[0].clientY-dg.y;ap();},{passive:false});"
     +"st.addEventListener('touchend',function(e){dg=null;if(!e.touches||e.touches.length<2)pin=null;});"
     +"document.querySelectorAll('.zb button').forEach(function(b){b.onclick=function(){var r=st.getBoundingClientRect(),a=b.getAttribute('data-z');if(a==='fit')fit();else zoomAt(r.width/2,r.height/2,a==='in'?1.25:1/1.25);};});"
-    +"document.querySelectorAll('[data-vfgo]').forEach(function(b){b.onclick=function(){var p=VF_POS[+b.getAttribute('data-vfgo')];if(p){z.x=24;z.y=16-p.top*z.k;ap();}};});"
+    +"document.querySelectorAll('[data-vfgo]').forEach(function(b){b.onclick=function(){var row=VF_ROWS[+b.getAttribute('data-vfgo')];if(!row)return;if(row.apoio){var o=window.opener;if(o&&!o.closed){try{o.openPF(row.k);o.focus();}catch(e){}}return;}var x=POS[row.k];if(x!=null){z.x=Math.round(24-x*z.k);ap();}};});"
     +"document.getElementById('openAll').onclick=function(){vfAllKeys().forEach(function(k){recOpen[k]=true;});draw();};"
     +"document.getElementById('closeAll').onclick=function(){vfAllKeys().forEach(function(k){recOpen[k]=false;});draw();};"
     +"function go(g){var o=window.opener;if(!o||o.closed)return;try{o.openPF(g.getAttribute('data-gopf'));o.focus();}catch(err){}}"
@@ -1873,7 +2005,7 @@ function openVisaoFull(){
     +'#map{position:absolute;left:0;top:0;transform-origin:0 0}'
     +'.zb{position:absolute;right:18px;bottom:18px;display:flex;flex-direction:column;background:#fff;border:1px solid #C7CFD9;border-radius:9px;overflow:hidden;box-shadow:0 2px 10px rgba(23,34,53,.1)}'
     +'.zb button{width:40px;height:38px;border:0;border-top:1px solid #DCE2E9;background:#fff;color:#4A5869;font-size:18px;line-height:1;cursor:pointer}.zb button:first-child{border-top:0}.zb button:hover{color:#1A4FA3;background:#F6F8FA}'
-    +'</style></head><body><header><h1>Fluxo completo do processo fiscal</h1><p>Clique nos + para abrir os detalhes de cada etapa. Arraste para mover; use a roda do mouse ou os botões para aproximar.</p>'
+    +'</style></head><body><header><h1>Visão geral do processo fiscal</h1><p>Clique nos + para abrir os detalhes. Arraste para mover; use a roda do mouse ou os botões para aproximar.</p>'
     +'<div class="nav">'+nav+'<span class="sp"></span><button type="button" class="btn" id="openAll">Abrir todos os +</button><button type="button" class="btn" id="closeAll">Fechar todos</button></div></header>'
     +'<div id="stage"><div id="map"></div><div class="zb"><button type="button" data-z="in" aria-label="Aproximar">+</button><button type="button" data-z="out" aria-label="Afastar">−</button><button type="button" data-z="fit" aria-label="Ajustar à tela">↺</button></div></div>'
     +'<scr'+'ipt>'+js+'</scr'+'ipt></body></html>';
@@ -1920,7 +2052,7 @@ function procfiscHtml(){
   var p=PROCFISC[curPF];
   if(p.svgmap){
     var vis=(curPF==="visao");
-    var d='<div class="maptool"><div><p class="crumb" style="margin:0 0 2px">Processos fiscais</p><h1>'+p.name+'</h1><p class="maphint">'+mapHint(vis?"O fluxo completo, do recebimento ao fechamento do mês. Clique nos círculos com + para abrir os detalhes de cada etapa.":"Clique nos círculos com + para abrir os detalhes.")+'</p></div>'
+    var d='<div class="maptool"><div><p class="crumb" style="margin:0 0 2px">Processos fiscais</p><h1>'+p.name+'</h1><p class="maphint">'+mapHint(vis?"Todas as etapas num só fluxo, do recebimento ao fechamento do mês. Clique nos + para abrir os detalhes.":"Clique nos círculos com + para abrir os detalhes.")+'</p></div>'
       +'<div class="maptool-act">'+(vis?'<button type="button" class="cta secondary" id="vfOpenAll">Abrir todos os +</button><button type="button" class="cta secondary" id="vfCloseAll">Fechar todos</button>':'')
       +'<button class="cta secondary" id="procfull-btn" type="button">'+ico("externo")+'Abrir em tela cheia</button></div></div>'
       +(vis?vfNavHtml():'');
@@ -1969,7 +2101,7 @@ document.addEventListener("keydown",function(e){if(view!=="present")return;
   if(ci){ if(CUREMAIL)ci.value=CUREMAIL; ci.onkeydown=function(e){if(e.key==="Enter"){var b=document.getElementById("coverBtn"); if(b)b.click();}}; }
   var cb=document.getElementById("coverBtn");
   if(cb)cb.onclick=function(){
-    if(AUTH_ON){ if(AUTH_USER){ document.getElementById("cover").style.display="none"; render(); } return; }
+    if(travado()){ if(AUTH_ON&&AUTH_USER&&ACESSO){ document.getElementById("cover").style.display="none"; render(); } return; }
     var inp=document.getElementById("coverEmail"), err=document.getElementById("coverEmailErr");
     if(!inp || !emailValid(inp.value)){ if(err)err.textContent="Digite um e-mail v\u00e1lido ou escolha \u201cContinuar sem e-mail\u201d."; if(inp)inp.focus(); return; }
     setEmail(inp.value);
@@ -1979,7 +2111,7 @@ document.addEventListener("keydown",function(e){if(view!=="present")return;
   var cs=document.getElementById("coverSkip");
   if(cs)cs.onclick=function(){
     if(AUTH_ON && AUTH_USER){ authSair(); return; }
-    if(AUTH_ON){ document.getElementById("cover").style.display="none"; render(); return; }
+    if(travado()) return;   // acesso restrito: não há como entrar sem conta
     setEmail("");
     var err=document.getElementById("coverEmailErr"); if(err)err.textContent="";
     document.getElementById("cover").style.display="none";
@@ -1994,6 +2126,7 @@ document.addEventListener("keydown",function(e){if(view!=="present")return;
   initMural();
   var cg=document.getElementById("coverGoogle"); if(cg) cg.onclick=authEntrar;
   authInit();
+  if(travado() && !AUTH_ON) travaSemLogin();
   try{ if(AUTH_ON && window.innerWidth>860 && getComputedStyle(document.getElementById("cover")).display!=="none" && cg) cg.focus(); }catch(e){}
   renderTabs(); render();
 })();

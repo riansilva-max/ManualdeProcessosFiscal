@@ -117,11 +117,91 @@
 
    ----- fim do SQL da parte 3 -----
 
+   ===== PARTE 4 — ACESSO RESTRITO À EQUIPE =====
+   Cria a lista de quem pode entrar (tabela acesso_manual) e faz o banco só
+   mostrar e aceitar dados do mural para quem está nela. Rode DEPOIS da parte 3
+   e ANTES de publicar o site novo. SQL Editor > New query > cole > Run.
+
+   ----- SQL da parte 4 -----
+
+   create table if not exists public.acesso_manual (
+     email text primary key check (email = lower(email) and email ~ '^[^@[:space:]]+@[^@[:space:]]+$'),
+     nome text not null default '',
+     admin boolean not null default false,
+     criado_em timestamptz not null default now()
+   );
+   alter table public.acesso_manual enable row level security;
+   revoke all on public.acesso_manual from anon;
+   grant select on public.acesso_manual to authenticated;
+   drop policy if exists "acesso: ver o próprio" on public.acesso_manual;
+   create policy "acesso: ver o próprio" on public.acesso_manual for select to authenticated
+     using (email = lower(auth.jwt()->>'email'));
+
+   create or replace function public.acesso_ok() returns boolean language sql stable security definer set search_path = public as $$
+     select exists (select 1 from public.acesso_manual where email = lower(coalesce(auth.jwt()->>'email','')));
+   $$;
+   create or replace function public.acesso_admin() returns boolean language sql stable security definer set search_path = public as $$
+     select exists (select 1 from public.acesso_manual where email = lower(coalesce(auth.jwt()->>'email','')) and admin);
+   $$;
+   revoke all on function public.acesso_ok() from public;
+   revoke all on function public.acesso_admin() from public;
+   grant execute on function public.acesso_ok() to authenticated;
+   grant execute on function public.acesso_admin() to authenticated;
+
+   insert into public.acesso_manual (email, nome, admin) values
+     ('rian.silva@preventsenior.com.br', 'Rian Silva', true),
+     ('aline.santos@preventsenior.com.br', 'Aline Sabino dos Santos Oliveira', false),
+     ('bianca.figueiredo@sanctamaggiore.com.br', 'Bianca da Silva Figueiredo', false),
+     ('bianca.sousa@preventsenior.com.br', 'Bianca Caroline Vieira de Sousa', false),
+     ('bruno.pereira@preventsenior.com.br', 'Bruno De Souza Pereira', false),
+     ('karina.fujii@preventsenior.com.br', 'Karina Yuka Sugiura Fujii', false),
+     ('milena.silva@preventsenior.com.br', 'Milena Alves da Silva', false),
+     ('nathalia.pinto@preventsenior.com.br', 'Nathalia Santos Pinto', false),
+     ('nikolas.rodrigues@preventsenior.com.br', 'Nikolas Mesquita Rodrigues', false),
+     ('tania.teixeira@preventsenior.com.br', 'Tania Gouveia Teixeira', false),
+     ('tatiane.santana@preventsenior.com.br', 'Tatiane Moreno Santana', false)
+   on conflict (email) do update set nome = excluded.nome, admin = excluded.admin;
+
+   alter table public.mural_noticias drop constraint if exists mural_noticias_email_check;
+   alter table public.mural_noticias add constraint mural_noticias_email_check check (email ~ '^[^@[:space:]]+@[^@[:space:]]+$');
+   alter table public.mural_atualizacoes drop constraint if exists mural_atualizacoes_email_check;
+   alter table public.mural_atualizacoes add constraint mural_atualizacoes_email_check check (email ~ '^[^@[:space:]]+@[^@[:space:]]+$');
+
+   drop policy if exists "mural: ler" on public.mural_noticias;
+   drop policy if exists "mural: publicar" on public.mural_noticias;
+   drop policy if exists "mural: remover" on public.mural_noticias;
+   drop policy if exists "mural: ler (logado)" on public.mural_noticias;
+   drop policy if exists "mural: publicar (logado)" on public.mural_noticias;
+   drop policy if exists "mural: remover (autor ou responsável)" on public.mural_noticias;
+   revoke all on public.mural_noticias from anon;
+   create policy "mural: ler (equipe)" on public.mural_noticias for select to authenticated using (public.acesso_ok());
+   create policy "mural: publicar (equipe)" on public.mural_noticias for insert to authenticated
+     with check (public.acesso_ok() and lower(email) = lower(auth.jwt()->>'email'));
+   create policy "mural: remover (autor ou responsável)" on public.mural_noticias for delete to authenticated
+     using (public.acesso_ok() and (lower(email) = lower(auth.jwt()->>'email') or public.acesso_admin()));
+
+   drop policy if exists "atualizações: ler" on public.mural_atualizacoes;
+   drop policy if exists "atualizações: publicar (logado)" on public.mural_atualizacoes;
+   drop policy if exists "atualizações: remover (autor ou responsável)" on public.mural_atualizacoes;
+   revoke all on public.mural_atualizacoes from anon;
+   create policy "atualizações: ler (equipe)" on public.mural_atualizacoes for select to authenticated using (public.acesso_ok());
+   create policy "atualizações: publicar (equipe)" on public.mural_atualizacoes for insert to authenticated
+     with check (public.acesso_ok() and lower(email) = lower(auth.jwt()->>'email'));
+   create policy "atualizações: remover (autor ou responsável)" on public.mural_atualizacoes for delete to authenticated
+     using (public.acesso_ok() and (lower(email) = lower(auth.jwt()->>'email') or public.acesso_admin()));
+
+   ----- fim do SQL da parte 4 -----
+
+   Incluir ou tirar alguém depois (SQL Editor > New query > Run):
+     incluir: insert into public.acesso_manual (email, nome) values ('nome.sobrenome@preventsenior.com.br', 'Nome Completo');
+     tirar:   delete from public.acesso_manual where email = 'nome.sobrenome@preventsenior.com.br';
+   (ou pelo Table Editor > acesso_manual, que funciona como uma planilha)
+
    Observações:
-   - O banco só aceita avisos completos, das 3 categorias e de e-mails
-     @preventsenior.com.br. Com o login do Google ligado, o banco confere que
-     quem publica é dono do e-mail; cada um remove só os próprios avisos
-     (o responsável remove qualquer um).
+   - O banco só aceita avisos completos e das 3 categorias. Com o login do
+     Google ligado, o banco confere que quem publica é dono do e-mail; cada um
+     remove só os próprios avisos (o responsável remove qualquer um). Depois da
+     parte 4, só quem está na lista acesso_manual lê ou publica.
    - Se aparecer "Acesso bloqueado" ao entrar com a conta da empresa, é a TI
      do Google da Prevent Senior bloqueando apps externos: peça para liberar
      o app pelo "ID do cliente" (passo A3).
@@ -137,3 +217,10 @@ var SUPABASE_TABELA = "mural_noticias";
 
 /* Login com o Google: ligado (PARTE 2 concluída). Para desligar, troque para false. */
 var LOGIN_GOOGLE = true;
+
+/* ID do cliente do Google (Google Cloud > Google Auth Platform > Clientes).
+   Preenchido, o botão de login é o do próprio Google e a tela de escolha de conta
+   mostra o endereço do manual (e não o do Supabase). É público: pode ficar no site.
+   Termina em .apps.googleusercontent.com. Vazio = login pelo Supabase, como antes.
+   NUNCA coloque aqui a "chave secreta" (GOCSPX-...). */
+var GOOGLE_CLIENT_ID = "";

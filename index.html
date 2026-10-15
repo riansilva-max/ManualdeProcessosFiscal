@@ -424,6 +424,74 @@ select.field{padding:0 8px;color:var(--ink);cursor:pointer}
 .hd-act .hd-del{margin:0 0 0 auto;color:var(--red-ink)}
 .upd-ref{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;margin:0 0 16px;padding:12px 14px;background:var(--sheet-2);border:1px solid var(--rule);border-radius:8px}
 .upd-ref b{flex-basis:100%;font-size:15px;line-height:1.4;color:var(--ink)}
+
+/* ciente e concluir */
+.ntit-link{all:unset;cursor:pointer;color:inherit;font:inherit}
+.ntit-link:hover{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.ntit-link:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:3px}
+.nitem .nauthor{margin:8px 0 0}
+.nitem .nfoot{justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px dashed var(--rule)}
+.cbar{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;min-width:0}
+.cbtn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px 0 10px;border:1px solid var(--rule-2);border-radius:999px;background:#fff;color:var(--ink-2);font:600 13px var(--sans);white-space:nowrap;transition:background .12s,border-color .12s,color .12s}
+.cbtn svg{width:15px;height:15px}
+.cbtn:hover{border-color:var(--green);color:var(--green-ink)}
+.cbtn.on{background:var(--green-wash);border-color:#BFE3CF;color:var(--green-ink)}
+.cwho{display:inline-flex;align-items:center;gap:8px;min-width:0;border:0;background:none;padding:3px 6px;margin-left:-4px;border-radius:6px;color:var(--ink-2);font:500 13px var(--sans);text-align:left}
+.cwho:hover{background:var(--sheet-2);color:var(--ink)}
+.cwho[aria-expanded="true"]{background:var(--sheet-2);color:var(--ink)}
+.cav{display:inline-flex;flex:none}
+.cav i{width:28px;height:28px;margin-left:-6px;border-radius:50%;border:2px solid #fff;background:var(--green-wash);color:var(--green-ink);font:700 10px/24px var(--sans);font-style:normal;text-align:center;letter-spacing:-.02em;box-sizing:border-box;overflow:hidden}
+.cav i:first-child{margin-left:0}
+.cct{color:var(--ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cpanel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 20px;margin-top:12px;padding:12px 16px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet-2)}
+.cpanel h4{margin:0 0 6px;font:600 12.5px var(--sans);color:var(--ink-2)}
+.cpanel ul{list-style:none;margin:0;padding:0;font-size:13.5px}
+.cpanel li{display:flex;justify-content:space-between;gap:10px;padding:3px 0;color:var(--ink)}
+.cpanel li time{color:var(--ink-3);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cpanel .falta li{color:var(--ink-3)}
+.cpanel .vazio{margin:0;color:var(--ink-3);font-size:13px}
+.nconcl{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--green-ink);white-space:nowrap}
+.nconcl svg{width:16px;height:16px}
+.nbtn.concl svg{color:var(--green)}
+.nbtn.concl:hover{border-color:var(--green);color:var(--green-ink)}
+.hd-ciente{margin:4px 0 0;padding-top:14px;border-top:1px solid var(--rule)}
+.hd-ciente .cpanel{margin-top:10px}
+.hd-act .nconcl{margin-right:6px}
+.opc{font-weight:400;color:var(--ink-3)}
+
+/* hierarquia do item: o recado em primeiro plano, o resto discreto */
+.nitem{padding:20px 0 16px}
+.nitem .nmeta{gap:8px 10px;flex-wrap:wrap;margin-bottom:10px}
+.nby{margin-left:auto;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.nby time{margin:0;font-size:inherit;color:inherit}
+.nitem .nnew{font-size:12px}
+.nitem .ntit{font-size:18px;margin:0 0 6px}
+.nitem .ntxt{color:var(--ink);font-size:15.5px;line-height:1.7;max-width:72ch}
+.nitem .nlast{margin-top:12px;padding:8px 12px;border-left-width:2px;background:transparent;border-left-color:var(--rule-2)}
+.nitem .nlast-h{font-size:12px;font-weight:500}
+.nitem .nlast p{font-size:14.5px;color:var(--ink)}
+.nitem .nfoot{margin-top:14px;padding-top:0;border-top:0;gap:6px 10px}
+.nitem .cbtn{height:28px;padding:0 10px 0 8px;font-size:12.5px;font-weight:600;border-color:var(--rule);color:var(--ink-3)}
+.nitem .cbtn svg{width:14px;height:14px}
+.nitem .cbtn:hover{color:var(--green-ink);border-color:var(--green)}
+.nitem .cbtn.on{color:var(--green-ink);border-color:#CFE8DA}
+.nitem .cwho{font-size:12.5px;color:var(--ink-3)}
+.nitem .cav i{width:24px;height:24px;font-size:9px;line-height:20px;margin-left:-6px}
+.nitem .cav i:first-child{margin-left:0}
+.nitem .nbtn{height:28px;padding:0 8px;border-color:transparent;background:transparent;color:var(--ink-3);font-size:12.5px}
+.nitem .nbtn:hover{border-color:var(--rule-2);background:#fff;color:var(--ink)}
+.nitem .nbtn.concl:hover{border-color:var(--green);color:var(--green-ink)}
+.nitem .nconcl{font-size:12.5px}
+.nitem .nbtns{gap:2px}
+.ndot{width:9px;height:9px;border-radius:50%;flex:none;background:var(--ink-3)}
+.ndot.pendencia{background:var(--red)}
+.ndot.tratativa{background:var(--amber)}
+.ndot.aviso{background:var(--blue)}
+.nitem .nmeta{align-items:flex-start}
+.nitem .nmeta .stag,.nitem .nmeta .ndot,.nitem .nmeta .nsit{margin-top:1px}
+.nitem .nmeta .ndot{margin-top:5px}
+.nby{display:flex;flex-direction:column;align-items:flex-end;gap:1px;line-height:1.35}
+.cav i.mais{background:var(--sheet-2);color:var(--ink-3)}
 .ablock{padding:18px 20px;margin-bottom:16px}
 .ablock h2{font:600 19px/1.2 var(--display);margin:0 0 10px;color:var(--ink)}
 .vtable{width:100%;border-collapse:collapse;font-size:14px}
@@ -555,6 +623,9 @@ html.mdl-open{overflow:hidden}
 .cover-btn.google{display:flex;align-items:center;justify-content:center;gap:12px;background:#fff;color:var(--ink);border-color:var(--rule-2)}
 .cover-btn.google:hover{background:var(--sheet-2);border-color:var(--ink-3)}
 .cover-btn.google svg{width:20px;height:20px;flex:none}
+.cover-gsi{min-height:44px;display:flex;justify-content:center}
+#coverEmailErr.info{color:var(--ink-2)}
+.cover-gsi[hidden]{display:none}
 .cover-btn[hidden],#coverEmailBox[hidden]{display:none}
 .cover-conta{border:1px solid var(--rule);background:var(--sheet-2);border-radius:10px;padding:12px 14px;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
 .cover-conta b{display:block;color:var(--ink);font-size:15.5px}
@@ -639,6 +710,10 @@ kbd{font:500 11.5px var(--sans);color:var(--ink-3);border:1px solid var(--rule-2
   .tl-when{display:none}
   .tl-dm{display:inline;color:var(--ink-3);font-weight:500;margin-right:4px}
   .hd-act .hd-del{margin-left:0}
+  .cpanel{grid-template-columns:minmax(0,1fr)}
+  .nitem .nfoot .nbtns{margin-left:0}
+  .nby{margin-left:0;flex-basis:100%;order:5;flex-direction:row;flex-wrap:wrap;gap:0 8px;align-items:baseline}
+  .nitem .ndel{margin-left:auto}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important}
@@ -684,6 +759,7 @@ kbd{font:500 11.5px var(--sans);color:var(--ink-3);border:1px solid var(--rule-2
       <div class="cover-cpf-err" id="coverEmailErr" role="alert"></div>
       <div class="cover-actions">
         <button class="cover-btn google" id="coverGoogle" type="button" hidden><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar com o Google</button>
+        <div id="coverGsi" class="cover-gsi" hidden></div>
         <button class="cover-btn" id="coverBtn" type="button">Entrar</button>
         <button class="cover-btn secondary" id="coverSkip" type="button">Continuar sem e-mail</button>
       </div>
